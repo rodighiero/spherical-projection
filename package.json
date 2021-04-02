@@ -1,0 +1,48 @@
+{
+  "name": "lexical-cartography-of-covid-19",
+  "version": "1.0.0",
+  "description": "This network visualization represents individuals through from their documents. It is based on the idea that authors can be described using their text and that shared vocabulary is an efficient way to draw a space. Individuals that make use of the same terms are situated nearby, beyond any social distance. The result is a lexical space composed of individuals and terms.",
+  "scripts": {
+    "start": "webpack-dev-server --mode development",
+    "build": "webpack --mode production"
+  },
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rodighiero/COVID-19.git"
+  },
+  "author": "Dario Rodighiero",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.9.6",
+    "@babel/preset-env": "^7.9.6",
+    "babel-loader": "^8.1.0",
+    "css-loader": "^3.5.3",
+    "csv-parser": "^2.3.2",
+    "fast-dice-coefficient": "^1.0.3",
+    "file-loader": "^6.0.0",
+    "html-loader": "^1.1.0",
+    "html-webpack-plugin": "^4.3.0",
+    "js-combinatorics": "^0.5.5",
+    "mini-css-extract-plugin": "^0.9.0",
+    "natural": "^2.1.5",
+    "stopword": "^1.0.1",
+    "webpack": "^4.43.0",
+    "webpack-cli": "^3.3.11",
+    "webpack-dev-server": "^3.11.0"
+  },
+  "dependencies": {
+    "@tarekraafat/autocomplete.js": "^7.2.0",
+    "d3": "^5.16.0",
+    "d3-force-3d": "^2.1.0",
+    "d3-force-reuse": "^1.0.1",
+    "fps": "0.0.3",
+    "normalize.css": "^8.0.1",
+    "pixi-svg": "^2.1.1",
+    "pixi-viewport": "^4.11.2",
+    "pixi.js": "^5.2.4",
+    "remove-accents": "^0.4.2"
+  }
+}
