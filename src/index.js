@@ -18,7 +18,6 @@ import stats from './stats'
 // Init
 
 import initPixi from './elements/pixi.js'
-import initFps from './elements/fps.js'
 import { initContours } from './elements/contours.js'
 import { initLinks } from './elements/links.js'
 import { initNodes } from './elements/nodes.js'
@@ -53,7 +52,6 @@ Promise.all([
     // stats();return
 
     initPixi()
-    initFps()
 
     initContours()
     initLinks()
