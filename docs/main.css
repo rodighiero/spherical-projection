@@ -371,3 +371,37 @@ a {
 	color: rgb(255, 255, 255);
 }
 
+#projection-panel {
+	position: absolute;
+	top: 12px;
+	left: 12px;
+	background: rgba(0, 0, 0, 0.6);
+	padding: 8px 12px;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+#projection-panel label {
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.6);
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+#projection-select {
+	background: rgba(255, 255, 255, 0.08);
+	color: white;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 4px;
+	padding: 4px 8px;
+	font-size: 12px;
+	cursor: pointer;
+	outline: none;
+}
+
+#projection-select:hover {
+	border-color: rgba(255, 255, 255, 0.5);
+}
+
