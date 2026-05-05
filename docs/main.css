@@ -1,3 +1,6 @@
+/*!********************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/normalize.css/normalize.css ***!
+  \********************************************************************************************/
 /*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */
 
 /* Document
@@ -348,6 +351,9 @@ template {
   display: none;
 }
 
+/*!*****************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./src/index.css ***!
+  \*****************************************************************/
 * {
 	-webkit-user-select: none;
 	user-select: none;

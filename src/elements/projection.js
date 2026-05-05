@@ -17,8 +17,16 @@ export const PROJECTIONS = {
 export function buildProjection(name) {
     const fn = d3[PROJECTIONS[name]]
     if (!fn) throw new Error(`Unknown projection: ${name}`)
-    return fn().fitSize(
-        [window.innerWidth, window.innerHeight],
-        { type: 'Sphere' }
-    )
+
+    const W = window.innerWidth
+    const H = window.innerHeight
+    const dim = Math.max(W, H)
+
+    // Fit to the LARGER dimension so the sphere fills the screen
+    // edge-to-edge. Otherwise a square-ish projection (e.g. Mercator)
+    // on a portrait screen leaves empty bands top and bottom — that's
+    // the "frame" effect. We then re-center on the actual screen.
+    return fn()
+        .fitSize([dim, dim], { type: 'Sphere' })
+        .translate([W / 2, H / 2])
 }

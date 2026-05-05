@@ -81,7 +81,10 @@ Promise.all([
             document.getElementById('projection-select').value
         )
         refreshGeoPath()
-        s.pixi.resize()
+        // Keep world bounds in sync with screen so clamp/clampZoom
+        // continue to prevent the empty-frame effect after resize.
+        const D = Math.max(window.innerWidth, window.innerHeight)
+        s.pixi.resize(window.innerWidth, window.innerHeight, D, D)
     }
 
 })
