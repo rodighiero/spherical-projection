@@ -342,7 +342,7 @@ eval("{/* (ignored) */\n\n//# sourceURL=webpack://lexical-cartography-of-covid-1
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module depends on other loaded chunks and execution need to be delayed
-/******/ 	var __webpack_exports__ = __webpack_require__.O(undefined, ["vendors-node_modules_d3-force-3d_src_simulation_js-node_modules_normalize_css_normalize_css-n-e3fd9c"], () => (__webpack_require__("./src/index.js")))
+/******/ 	var __webpack_exports__ = __webpack_require__.O(undefined, ["vendors-node_modules_normalize_css_normalize_css-node_modules_pixi-viewport_dist_viewport_es_-c5ea6e"], () => (__webpack_require__("./src/index.js")))
 /******/ 	__webpack_exports__ = __webpack_require__.O(__webpack_exports__);
 /******/ 	
 /******/ })()

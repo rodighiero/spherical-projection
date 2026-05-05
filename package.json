@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "d3": "^7.9.0",
-    "d3-force-3d": "^2.1.0",
+    "d3-force-3d": "^3.0.6",
     "normalize.css": "^8.0.1",
     "pixi-viewport": "4.11.2",
     "pixi.js": "5.3.3"
