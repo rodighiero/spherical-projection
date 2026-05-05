@@ -1,21 +1,21 @@
-import * as PIXI from 'pixi.js'
+import { Application } from 'pixi.js'
 import { Viewport } from 'pixi-viewport'
 
-export default () => {
+export default async () => {
 
-    // Create and append PIXI
+    // Create and append PIXI (v8 uses async init).
 
-    const app = new PIXI.Application({
+    const app = new Application()
+    await app.init({
         width: window.innerWidth,
         height: window.innerHeight,
         antialias: true,
-        transparent: true,
+        backgroundAlpha: 0,
         resolution: 2,
         autoDensity: true,
-        autoResize: true,
         resizeTo: window,
     })
-    document.body.prepend(app.view)
+    document.body.prepend(app.canvas)
 
     // Create and append viewport.
     // The projection in projection.js fills the larger screen dimension,
@@ -30,7 +30,7 @@ export default () => {
         screenHeight: H,
         worldWidth: D,
         worldHeight: D,
-        interaction: app.renderer.plugins.interaction
+        events: app.renderer.events,
     })
     app.stage.addChild(viewport)
 
@@ -49,11 +49,11 @@ export default () => {
         .decelerate()
         .clamp({ direction: 'all', underflow: 'center' })
         .clampZoom({ minScale: 1, maxScale: 5 })
-        
+
     // Prevent pinch gesture in Chrome
 
     window.addEventListener('wheel', e => {
         e.preventDefault()
     }, { passive: false })
-        
+
 }

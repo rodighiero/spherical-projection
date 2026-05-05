@@ -7,6 +7,7 @@
  * If you are looking for production-ready output files, see mode: "production" (https://webpack.js.org/configuration/mode/).
  */
 /******/ (() => { // webpackBootstrap
+/******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
 /***/ "./src/elements/background.js"
@@ -15,7 +16,6 @@
   \************************************/
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
-"use strict";
 eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (__WEBPACK_DEFAULT_EXPORT__)\n/* harmony export */ });\n/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (() => {\n  const canvas = document.querySelector('canvas#background');\n  canvas.width = window.innerWidth;\n  canvas.height = window.innerHeight;\n  const body = document.querySelector('body');\n  body.prepend(canvas);\n  const context = canvas.getContext('2d', {\n    alpha: false\n  });\n  const gradient = context.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width / 2);\n  gradient.addColorStop(1, d3.rgb(0, 0, 0));\n  gradient.addColorStop(0, d3.rgb(255, 255, 255));\n  context.fillStyle = gradient;\n  context.fillRect(0, 0, canvas.width, canvas.height);\n});\n(Object.getOwnPropertyDescriptor(__WEBPACK_DEFAULT_EXPORT__, \"name\") || {}).writable || Object.defineProperty(__WEBPACK_DEFAULT_EXPORT__, \"name\", { value: \"default\", configurable: true });\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/elements/background.js?\n}");
 
 /***/ },
@@ -26,8 +26,7 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
   \*******************************/
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
-"use strict";
-eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   drawLinks: () => (/* binding */ drawLinks),\n/* harmony export */   initLinks: () => (/* binding */ initLinks),\n/* harmony export */   refreshGeoPath: () => (/* binding */ refreshGeoPath)\n/* harmony export */ });\n/* harmony import */ var pixi_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! pixi.js */ \"./node_modules/pixi.js/lib/pixi.es.js\");\n/* harmony import */ var d3__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! d3 */ \"./node_modules/d3/src/index.js\");\n\n\n\n// Adapts PIXI.Graphics to the canvas 2D context interface that d3.geoPath expects.\n// This lets us render all links into a single Graphics object without any SVG overhead.\nclass PixiGeoContext {\n  constructor(graphics) {\n    this.g = graphics;\n  }\n  beginPath() {}\n  moveTo(x, y) {\n    this.g.moveTo(x, y);\n  }\n  lineTo(x, y) {\n    this.g.lineTo(x, y);\n  }\n  arc(x, y, r, a0, a1, ccw) {\n    this.g.arc(x, y, r, a0, a1, ccw);\n  }\n  closePath() {\n    this.g.closePath();\n  }\n  stroke() {}\n  fill() {}\n}\nlet stage, pixiCtx, geoPath;\nfunction initLinks() {\n  const graphics = new pixi_js__WEBPACK_IMPORTED_MODULE_0__.Graphics();\n  stage = s.pixi.addChild(graphics);\n  pixiCtx = new PixiGeoContext(stage);\n  refreshGeoPath();\n}\nfunction refreshGeoPath() {\n  geoPath = d3__WEBPACK_IMPORTED_MODULE_1__.geoPath(s.projection, pixiCtx);\n}\nfunction drawLinks() {\n  stage.clear();\n  stage.lineStyle(0.5, 0xaaaaaa, 0.5);\n  s.links.forEach(link => {\n    geoPath({\n      type: 'LineString',\n      coordinates: [link.source.spherical, link.target.spherical]\n    });\n  });\n}\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/elements/links.js?\n}");
+eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   drawLinks: () => (/* binding */ drawLinks),\n/* harmony export */   initLinks: () => (/* binding */ initLinks),\n/* harmony export */   refreshGeoPath: () => (/* binding */ refreshGeoPath)\n/* harmony export */ });\n/* harmony import */ var pixi_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! pixi.js */ \"./node_modules/pixi.js/lib/index.mjs\");\n/* harmony import */ var d3__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! d3 */ \"./node_modules/d3/src/index.js\");\n\n\n\n// Adapts PIXI.Graphics to the canvas 2D context interface that d3.geoPath\n// expects. Path commands accumulate into the Graphics' current path; we\n// stroke once at the end of drawLinks() (PIXI v8 commits paths via stroke()\n// or fill(), not via lineStyle as in v5).\nclass PixiGeoContext {\n  constructor(graphics) {\n    this.g = graphics;\n  }\n  beginPath() {}\n  moveTo(x, y) {\n    this.g.moveTo(x, y);\n  }\n  lineTo(x, y) {\n    this.g.lineTo(x, y);\n  }\n  arc(x, y, r, a0, a1, ccw) {\n    this.g.arc(x, y, r, a0, a1, ccw);\n  }\n  closePath() {\n    this.g.closePath();\n  }\n  stroke() {}\n  fill() {}\n}\nlet stage, pixiCtx, geoPath;\nfunction initLinks() {\n  const graphics = new pixi_js__WEBPACK_IMPORTED_MODULE_0__.Graphics();\n  stage = s.pixi.addChild(graphics);\n  pixiCtx = new PixiGeoContext(stage);\n  refreshGeoPath();\n}\nfunction refreshGeoPath() {\n  geoPath = d3__WEBPACK_IMPORTED_MODULE_1__.geoPath(s.projection, pixiCtx);\n}\nfunction drawLinks() {\n  stage.clear();\n  s.links.forEach(link => {\n    geoPath({\n      type: 'LineString',\n      coordinates: [link.source.spherical, link.target.spherical]\n    });\n  });\n  stage.stroke({\n    width: 0.5,\n    color: 0xaaaaaa,\n    alpha: 0.5\n  });\n}\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/elements/links.js?\n}");
 
 /***/ },
 
@@ -37,8 +36,7 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
   \*******************************/
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
-"use strict";
-eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   drawNodes: () => (/* binding */ drawNodes),\n/* harmony export */   initNodes: () => (/* binding */ initNodes)\n/* harmony export */ });\n/* harmony import */ var pixi_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! pixi.js */ \"./node_modules/pixi.js/lib/pixi.es.js\");\n\nlet stage;\nfunction initNodes() {\n  const graphics = new pixi_js__WEBPACK_IMPORTED_MODULE_0__.Graphics();\n  stage = s.pixi.addChild(graphics);\n}\nfunction drawNodes() {\n  stage.clear();\n  stage.beginFill(0xffffff, 0.9);\n  s.nodes.forEach(node => {\n    const pos = s.projection(node.spherical);\n    if (pos) stage.drawCircle(pos[0], pos[1], 2);\n  });\n  stage.endFill();\n}\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/elements/nodes.js?\n}");
+eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   drawNodes: () => (/* binding */ drawNodes),\n/* harmony export */   initNodes: () => (/* binding */ initNodes)\n/* harmony export */ });\n/* harmony import */ var pixi_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! pixi.js */ \"./node_modules/pixi.js/lib/index.mjs\");\n\nlet stage;\nfunction initNodes() {\n  const graphics = new pixi_js__WEBPACK_IMPORTED_MODULE_0__.Graphics();\n  stage = s.pixi.addChild(graphics);\n}\nfunction drawNodes() {\n  stage.clear();\n  s.nodes.forEach(node => {\n    const pos = s.projection(node.spherical);\n    if (pos) stage.circle(pos[0], pos[1], 2);\n  });\n  stage.fill({\n    color: 0xffffff,\n    alpha: 0.9\n  });\n}\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/elements/nodes.js?\n}");
 
 /***/ },
 
@@ -48,8 +46,7 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
   \******************************/
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
-"use strict";
-eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (__WEBPACK_DEFAULT_EXPORT__)\n/* harmony export */ });\n/* harmony import */ var pixi_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! pixi.js */ \"./node_modules/pixi.js/lib/pixi.es.js\");\n/* harmony import */ var pixi_viewport__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! pixi-viewport */ \"./node_modules/pixi-viewport/dist/viewport.es.js\");\n\n\n/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (() => {\n  // Create and append PIXI\n\n  const app = new pixi_js__WEBPACK_IMPORTED_MODULE_0__.Application({\n    width: window.innerWidth,\n    height: window.innerHeight,\n    antialias: true,\n    transparent: true,\n    resolution: 2,\n    autoDensity: true,\n    autoResize: true,\n    resizeTo: window\n  });\n  document.body.prepend(app.view);\n\n  // Create and append viewport.\n  // The projection in projection.js fills the larger screen dimension,\n  // so the world is a square of size max(W, H) centered on the screen.\n\n  const W = window.innerWidth;\n  const H = window.innerHeight;\n  const D = Math.max(W, H);\n  const viewport = new pixi_viewport__WEBPACK_IMPORTED_MODULE_1__.Viewport({\n    screenWidth: W,\n    screenHeight: H,\n    worldWidth: D,\n    worldHeight: D,\n    interaction: app.renderer.plugins.interaction\n  });\n  app.stage.addChild(viewport);\n  s.pixi = viewport;\n\n  // Activate plugins.\n  // The projection is the visualization's natural extent, so zooming\n  // out below the initial scale is meaningless — disabled here.\n  // Zooming in is still allowed (up to 5x). clamp keeps the world\n  // from being panned outside the screen.\n\n  viewport.drag().pinch().wheel().decelerate().clamp({\n    direction: 'all',\n    underflow: 'center'\n  }).clampZoom({\n    minScale: 1,\n    maxScale: 5\n  });\n\n  // Prevent pinch gesture in Chrome\n\n  window.addEventListener('wheel', e => {\n    e.preventDefault();\n  }, {\n    passive: false\n  });\n});\n(Object.getOwnPropertyDescriptor(__WEBPACK_DEFAULT_EXPORT__, \"name\") || {}).writable || Object.defineProperty(__WEBPACK_DEFAULT_EXPORT__, \"name\", { value: \"default\", configurable: true });\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/elements/pixi.js?\n}");
+eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (__WEBPACK_DEFAULT_EXPORT__)\n/* harmony export */ });\n/* harmony import */ var pixi_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! pixi.js */ \"./node_modules/pixi.js/lib/index.mjs\");\n/* harmony import */ var pixi_viewport__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! pixi-viewport */ \"./node_modules/pixi-viewport/dist/pixi_viewport.js\");\n\n\n/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (async () => {\n  // Create and append PIXI (v8 uses async init).\n\n  const app = new pixi_js__WEBPACK_IMPORTED_MODULE_0__.Application();\n  await app.init({\n    width: window.innerWidth,\n    height: window.innerHeight,\n    antialias: true,\n    backgroundAlpha: 0,\n    resolution: 2,\n    autoDensity: true,\n    resizeTo: window\n  });\n  document.body.prepend(app.canvas);\n\n  // Create and append viewport.\n  // The projection in projection.js fills the larger screen dimension,\n  // so the world is a square of size max(W, H) centered on the screen.\n\n  const W = window.innerWidth;\n  const H = window.innerHeight;\n  const D = Math.max(W, H);\n  const viewport = new pixi_viewport__WEBPACK_IMPORTED_MODULE_1__.Viewport({\n    screenWidth: W,\n    screenHeight: H,\n    worldWidth: D,\n    worldHeight: D,\n    events: app.renderer.events\n  });\n  app.stage.addChild(viewport);\n  s.pixi = viewport;\n\n  // Activate plugins.\n  // The projection is the visualization's natural extent, so zooming\n  // out below the initial scale is meaningless — disabled here.\n  // Zooming in is still allowed (up to 5x). clamp keeps the world\n  // from being panned outside the screen.\n\n  viewport.drag().pinch().wheel().decelerate().clamp({\n    direction: 'all',\n    underflow: 'center'\n  }).clampZoom({\n    minScale: 1,\n    maxScale: 5\n  });\n\n  // Prevent pinch gesture in Chrome\n\n  window.addEventListener('wheel', e => {\n    e.preventDefault();\n  }, {\n    passive: false\n  });\n});\n(Object.getOwnPropertyDescriptor(__WEBPACK_DEFAULT_EXPORT__, \"name\") || {}).writable || Object.defineProperty(__WEBPACK_DEFAULT_EXPORT__, \"name\", { value: \"default\", configurable: true });\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/elements/pixi.js?\n}");
 
 /***/ },
 
@@ -59,7 +56,6 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
   \************************************/
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
-"use strict";
 eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   PROJECTIONS: () => (/* binding */ PROJECTIONS),\n/* harmony export */   buildProjection: () => (/* binding */ buildProjection)\n/* harmony export */ });\n// Shared projection state — all drawing modules read from s.projection\n\nconst PROJECTIONS = {\n  'Mercator': 'geoMercator',\n  'Natural Earth': 'geoNaturalEarth1',\n  'Equal Earth': 'geoEqualEarth',\n  'Equirectangular': 'geoEquirectangular',\n  'Orthographic': 'geoOrthographic',\n  'Stereographic': 'geoStereographic',\n  'Azimuthal Equal Area': 'geoAzimuthalEqualArea',\n  'Azimuthal Equidistant': 'geoAzimuthalEquidistant',\n  'Gnomonic': 'geoGnomonic',\n  'Conic Equal Area': 'geoConicEqualArea',\n  'Transverse Mercator': 'geoTransverseMercator'\n};\nfunction buildProjection(name) {\n  const fn = d3[PROJECTIONS[name]];\n  if (!fn) throw new Error(`Unknown projection: ${name}`);\n  const W = window.innerWidth;\n  const H = window.innerHeight;\n  const dim = Math.max(W, H);\n\n  // Fit to the LARGER dimension so the sphere fills the screen\n  // edge-to-edge. Otherwise a square-ish projection (e.g. Mercator)\n  // on a portrait screen leaves empty bands top and bottom — that's\n  // the \"frame\" effect. We then re-center on the actual screen.\n  return fn().fitSize([dim, dim], {\n    type: 'Sphere'\n  }).translate([W / 2, H / 2]);\n}\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/elements/projection.js?\n}");
 
 /***/ },
@@ -70,7 +66,6 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
   \************************************/
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
-"use strict";
 eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   simulation: () => (/* binding */ simulation),\n/* harmony export */   ticked: () => (/* binding */ ticked)\n/* harmony export */ });\n/* harmony import */ var d3_force_3d__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! d3-force-3d */ \"./node_modules/d3-force-3d/src/simulation.js\");\n/* harmony import */ var _links__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./links */ \"./src/elements/links.js\");\n/* harmony import */ var _nodes__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./nodes */ \"./src/elements/nodes.js\");\n\n\n\nconst {\n  cos,\n  sin,\n  atan2\n} = Math;\nconst halfPi = Math.PI / 2;\nconst asin = x => x > 1 ? halfPi : x < -1 ? -halfPi : Math.asin(x);\nconst spherical = ([x, y, z]) => [atan2(y, x), asin(z)];\nfunction simulation() {\n  const sim = d3_force_3d__WEBPACK_IMPORTED_MODULE_0__[\"default\"]().numDimensions(3).nodes(s.nodes).force(\"collide\", d3.forceCollide().radius(60)).force(\"charge\", d3.forceManyBody().strength(-20)).force(\"link\", d3.forceLink(s.links).id(d => d.id).strength(d => d.value)).force(\"center\", d3.forceCenter()).force(\"surface\", function () {\n    const R = 15 * Math.sqrt(s.nodes.length);\n    for (const node of s.nodes) {\n      if (node.fx) node.x = node.fx;\n      if (node.fy) node.y = node.fy;\n      if (node.fz) node.z = node.fz;\n      node.norm = Math.sqrt(node.x ** 2 + node.y ** 2 + node.z ** 2) || 1;\n\n      // Project to unit sphere and store as [lon, lat] in degrees\n      node.spherical = spherical([node.x / node.norm, node.y / node.norm, node.z / node.norm]).map(d => d * 180 / Math.PI);\n\n      // Pull node towards sphere surface of radius R\n      const f = (1 + R / node.norm) / 2;\n      node.x *= f;\n      node.y *= f;\n      node.z *= f;\n\n      // Constrain velocity to tangent plane\n      const sp = (node.vx * node.x + node.vy * node.y + node.vz * node.z) / node.norm ** 2;\n      node.vx -= node.x * sp;\n      node.vy -= node.y * sp;\n      node.vz -= node.z * sp;\n    }\n  }).on('tick', ticked);\n}\nfunction ticked() {\n  (0,_links__WEBPACK_IMPORTED_MODULE_1__.drawLinks)();\n  (0,_nodes__WEBPACK_IMPORTED_MODULE_2__.drawNodes)();\n}\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/elements/simulation.js?\n}");
 
 /***/ },
@@ -81,8 +76,7 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
   \**********************/
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
-"use strict";
-eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony import */ var _node_modules_normalize_css_normalize_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../node_modules/normalize.css/normalize.css */ \"./node_modules/normalize.css/normalize.css\");\n/* harmony import */ var _index_css__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./index.css */ \"./src/index.css\");\n/* harmony import */ var d3__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! d3 */ \"./node_modules/d3/src/index.js\");\n/* harmony import */ var _data_nodes_json__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./data/nodes.json */ \"./src/data/nodes.json\");\n/* harmony import */ var _data_links_json__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./data/links.json */ \"./src/data/links.json\");\n/* harmony import */ var _elements_pixi_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./elements/pixi.js */ \"./src/elements/pixi.js\");\n/* harmony import */ var _elements_links_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./elements/links.js */ \"./src/elements/links.js\");\n/* harmony import */ var _elements_nodes_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./elements/nodes.js */ \"./src/elements/nodes.js\");\n/* harmony import */ var _elements_background__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./elements/background */ \"./src/elements/background.js\");\n/* harmony import */ var _elements_simulation__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./elements/simulation */ \"./src/elements/simulation.js\");\n/* harmony import */ var _elements_projection_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./elements/projection.js */ \"./src/elements/projection.js\");\n// CSS\n\n\n\n\n// Libraries\n\n\n\n// Data\n\n\n\n\n// Init\n\n\n\n\n\n\n\n\n// Global variables\n\nwindow.d3 = d3__WEBPACK_IMPORTED_MODULE_2__;\nwindow.s = {\n  links: _data_links_json__WEBPACK_IMPORTED_MODULE_4__,\n  nodes: _data_nodes_json__WEBPACK_IMPORTED_MODULE_3__,\n  projection: null\n};\n\n// Projection selector\n\nfunction initProjectionPanel() {\n  const select = document.getElementById('projection-select');\n  Object.keys(_elements_projection_js__WEBPACK_IMPORTED_MODULE_10__.PROJECTIONS).forEach(name => {\n    const option = document.createElement('option');\n    option.value = name;\n    option.textContent = name;\n    if (name === 'Mercator') option.selected = true;\n    select.appendChild(option);\n  });\n  select.addEventListener('change', () => {\n    s.projection = (0,_elements_projection_js__WEBPACK_IMPORTED_MODULE_10__.buildProjection)(select.value);\n    (0,_elements_links_js__WEBPACK_IMPORTED_MODULE_6__.refreshGeoPath)();\n    (0,_elements_links_js__WEBPACK_IMPORTED_MODULE_6__.drawLinks)();\n    (0,_elements_nodes_js__WEBPACK_IMPORTED_MODULE_7__.drawNodes)();\n  });\n}\n\n// Start\n\nPromise.all([d3__WEBPACK_IMPORTED_MODULE_2__.json(_data_nodes_json__WEBPACK_IMPORTED_MODULE_3__), d3__WEBPACK_IMPORTED_MODULE_2__.json(_data_links_json__WEBPACK_IMPORTED_MODULE_4__)]).then(([nodes, links]) => {\n  s.links = links;\n  s.nodes = nodes;\n  console.log('nodes', s.nodes.length);\n  console.log('links', s.links.length);\n\n  // Build the initial projection before any drawing happens\n  s.projection = (0,_elements_projection_js__WEBPACK_IMPORTED_MODULE_10__.buildProjection)('Mercator');\n  (0,_elements_pixi_js__WEBPACK_IMPORTED_MODULE_5__[\"default\"])();\n  (0,_elements_links_js__WEBPACK_IMPORTED_MODULE_6__.initLinks)();\n  (0,_elements_nodes_js__WEBPACK_IMPORTED_MODULE_7__.initNodes)();\n  (0,_elements_background__WEBPACK_IMPORTED_MODULE_8__[\"default\"])();\n  (0,_elements_simulation__WEBPACK_IMPORTED_MODULE_9__.simulation)();\n  initProjectionPanel();\n  window.onresize = function () {\n    (0,_elements_background__WEBPACK_IMPORTED_MODULE_8__[\"default\"])();\n    s.projection = (0,_elements_projection_js__WEBPACK_IMPORTED_MODULE_10__.buildProjection)(document.getElementById('projection-select').value);\n    (0,_elements_links_js__WEBPACK_IMPORTED_MODULE_6__.refreshGeoPath)();\n    // Keep world bounds in sync with screen so clamp/clampZoom\n    // continue to prevent the empty-frame effect after resize.\n    const D = Math.max(window.innerWidth, window.innerHeight);\n    s.pixi.resize(window.innerWidth, window.innerHeight, D, D);\n  };\n});\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/index.js?\n}");
+eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony import */ var _node_modules_normalize_css_normalize_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../node_modules/normalize.css/normalize.css */ \"./node_modules/normalize.css/normalize.css\");\n/* harmony import */ var _index_css__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./index.css */ \"./src/index.css\");\n/* harmony import */ var d3__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! d3 */ \"./node_modules/d3/src/index.js\");\n/* harmony import */ var _data_nodes_json__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./data/nodes.json */ \"./src/data/nodes.json\");\n/* harmony import */ var _data_links_json__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./data/links.json */ \"./src/data/links.json\");\n/* harmony import */ var _elements_pixi_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./elements/pixi.js */ \"./src/elements/pixi.js\");\n/* harmony import */ var _elements_links_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./elements/links.js */ \"./src/elements/links.js\");\n/* harmony import */ var _elements_nodes_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./elements/nodes.js */ \"./src/elements/nodes.js\");\n/* harmony import */ var _elements_background__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./elements/background */ \"./src/elements/background.js\");\n/* harmony import */ var _elements_simulation__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./elements/simulation */ \"./src/elements/simulation.js\");\n/* harmony import */ var _elements_projection_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./elements/projection.js */ \"./src/elements/projection.js\");\n// CSS\n\n\n\n\n// Libraries\n\n\n\n// Data\n\n\n\n\n// Init\n\n\n\n\n\n\n\n\n// Global variables\n\nwindow.d3 = d3__WEBPACK_IMPORTED_MODULE_2__;\nwindow.s = {\n  links: _data_links_json__WEBPACK_IMPORTED_MODULE_4__,\n  nodes: _data_nodes_json__WEBPACK_IMPORTED_MODULE_3__,\n  projection: null\n};\n\n// Projection selector\n\nfunction initProjectionPanel() {\n  const select = document.getElementById('projection-select');\n  Object.keys(_elements_projection_js__WEBPACK_IMPORTED_MODULE_10__.PROJECTIONS).forEach(name => {\n    const option = document.createElement('option');\n    option.value = name;\n    option.textContent = name;\n    if (name === 'Mercator') option.selected = true;\n    select.appendChild(option);\n  });\n  select.addEventListener('change', () => {\n    s.projection = (0,_elements_projection_js__WEBPACK_IMPORTED_MODULE_10__.buildProjection)(select.value);\n    (0,_elements_links_js__WEBPACK_IMPORTED_MODULE_6__.refreshGeoPath)();\n    (0,_elements_links_js__WEBPACK_IMPORTED_MODULE_6__.drawLinks)();\n    (0,_elements_nodes_js__WEBPACK_IMPORTED_MODULE_7__.drawNodes)();\n  });\n}\n\n// Start\n\nPromise.all([d3__WEBPACK_IMPORTED_MODULE_2__.json(_data_nodes_json__WEBPACK_IMPORTED_MODULE_3__), d3__WEBPACK_IMPORTED_MODULE_2__.json(_data_links_json__WEBPACK_IMPORTED_MODULE_4__)]).then(async ([nodes, links]) => {\n  s.links = links;\n  s.nodes = nodes;\n  console.log('nodes', s.nodes.length);\n  console.log('links', s.links.length);\n\n  // Build the initial projection before any drawing happens\n  s.projection = (0,_elements_projection_js__WEBPACK_IMPORTED_MODULE_10__.buildProjection)('Mercator');\n  await (0,_elements_pixi_js__WEBPACK_IMPORTED_MODULE_5__[\"default\"])();\n  (0,_elements_links_js__WEBPACK_IMPORTED_MODULE_6__.initLinks)();\n  (0,_elements_nodes_js__WEBPACK_IMPORTED_MODULE_7__.initNodes)();\n  (0,_elements_background__WEBPACK_IMPORTED_MODULE_8__[\"default\"])();\n  (0,_elements_simulation__WEBPACK_IMPORTED_MODULE_9__.simulation)();\n  initProjectionPanel();\n  window.onresize = function () {\n    (0,_elements_background__WEBPACK_IMPORTED_MODULE_8__[\"default\"])();\n    s.projection = (0,_elements_projection_js__WEBPACK_IMPORTED_MODULE_10__.buildProjection)(document.getElementById('projection-select').value);\n    (0,_elements_links_js__WEBPACK_IMPORTED_MODULE_6__.refreshGeoPath)();\n    // Keep world bounds in sync with screen so clamp/clampZoom\n    // continue to prevent the empty-frame effect after resize.\n    const D = Math.max(window.innerWidth, window.innerHeight);\n    s.pixi.resize(window.innerWidth, window.innerHeight, D, D);\n  };\n});\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/index.js?\n}");
 
 /***/ },
 
@@ -92,7 +86,6 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony import */ var _no
   \***********************/
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
-"use strict";
 eval("{__webpack_require__.r(__webpack_exports__);\n// extracted by mini-css-extract-plugin\n\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/index.css?\n}");
 
 /***/ },
@@ -103,7 +96,6 @@ eval("{__webpack_require__.r(__webpack_exports__);\n// extracted by mini-css-ext
   \*****************************/
 (module, __unused_webpack_exports, __webpack_require__) {
 
-"use strict";
 eval("{module.exports = __webpack_require__.p + \"links.json\";\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/data/links.json?\n}");
 
 /***/ },
@@ -114,18 +106,7 @@ eval("{module.exports = __webpack_require__.p + \"links.json\";\n\n//# sourceURL
   \*****************************/
 (module, __unused_webpack_exports, __webpack_require__) {
 
-"use strict";
 eval("{module.exports = __webpack_require__.p + \"nodes.json\";\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./src/data/nodes.json?\n}");
-
-/***/ },
-
-/***/ "?4f7e"
-/*!********************************!*\
-  !*** ./util.inspect (ignored) ***!
-  \********************************/
-() {
-
-eval("{/* (ignored) */\n\n//# sourceURL=webpack://lexical-cartography-of-covid-19/./util.inspect_(ignored)?\n}");
 
 /***/ }
 
@@ -143,8 +124,8 @@ eval("{/* (ignored) */\n\n//# sourceURL=webpack://lexical-cartography-of-covid-1
 /******/ 		}
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = __webpack_module_cache__[moduleId] = {
-/******/ 			id: moduleId,
-/******/ 			loaded: false,
+/******/ 			// no module.id needed
+/******/ 			// no module.loaded needed
 /******/ 			exports: {}
 /******/ 		};
 /******/ 	
@@ -155,10 +136,7 @@ eval("{/* (ignored) */\n\n//# sourceURL=webpack://lexical-cartography-of-covid-1
 /******/ 			e.code = 'MODULE_NOT_FOUND';
 /******/ 			throw e;
 /******/ 		}
-/******/ 		__webpack_modules__[moduleId].call(module.exports, module, module.exports, __webpack_require__);
-/******/ 	
-/******/ 		// Flag the module as loaded
-/******/ 		module.loaded = true;
+/******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
 /******/ 	
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
@@ -200,18 +178,6 @@ eval("{/* (ignored) */\n\n//# sourceURL=webpack://lexical-cartography-of-covid-1
 /******/ 		};
 /******/ 	})();
 /******/ 	
-/******/ 	/* webpack/runtime/compat get default export */
-/******/ 	(() => {
-/******/ 		// getDefaultExport function for compatibility with non-harmony modules
-/******/ 		__webpack_require__.n = (module) => {
-/******/ 			var getter = module && module.__esModule ?
-/******/ 				() => (module['default']) :
-/******/ 				() => (module);
-/******/ 			__webpack_require__.d(getter, { a: getter });
-/******/ 			return getter;
-/******/ 		};
-/******/ 	})();
-/******/ 	
 /******/ 	/* webpack/runtime/define property getters */
 /******/ 	(() => {
 /******/ 		// define getter functions for harmony exports
@@ -221,6 +187,37 @@ eval("{/* (ignored) */\n\n//# sourceURL=webpack://lexical-cartography-of-covid-1
 /******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
 /******/ 				}
 /******/ 			}
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/ensure chunk */
+/******/ 	(() => {
+/******/ 		__webpack_require__.f = {};
+/******/ 		// This file contains only the entry chunk.
+/******/ 		// The chunk loading function for additional chunks
+/******/ 		__webpack_require__.e = (chunkId) => {
+/******/ 			return Promise.all(Object.keys(__webpack_require__.f).reduce((promises, key) => {
+/******/ 				__webpack_require__.f[key](chunkId, promises);
+/******/ 				return promises;
+/******/ 			}, []));
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/get javascript chunk filename */
+/******/ 	(() => {
+/******/ 		// This function allow to reference async chunks
+/******/ 		__webpack_require__.u = (chunkId) => {
+/******/ 			// return url for filenames based on template
+/******/ 			return "" + chunkId + ".js";
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/get mini-css chunk filename */
+/******/ 	(() => {
+/******/ 		// This function allow to reference async chunks
+/******/ 		__webpack_require__.miniCssF = (chunkId) => {
+/******/ 			// return url for filenames based on template
+/******/ 			return undefined;
 /******/ 		};
 /******/ 	})();
 /******/ 	
@@ -241,6 +238,51 @@ eval("{/* (ignored) */\n\n//# sourceURL=webpack://lexical-cartography-of-covid-1
 /******/ 		__webpack_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
 /******/ 	})();
 /******/ 	
+/******/ 	/* webpack/runtime/load script */
+/******/ 	(() => {
+/******/ 		var inProgress = {};
+/******/ 		var dataWebpackPrefix = "lexical-cartography-of-covid-19:";
+/******/ 		// loadScript function to load a script via script tag
+/******/ 		__webpack_require__.l = (url, done, key, chunkId) => {
+/******/ 			if(inProgress[url]) { inProgress[url].push(done); return; }
+/******/ 			var script, needAttach;
+/******/ 			if(key !== undefined) {
+/******/ 				var scripts = document.getElementsByTagName("script");
+/******/ 				for(var i = 0; i < scripts.length; i++) {
+/******/ 					var s = scripts[i];
+/******/ 					if(s.getAttribute("src") == url || s.getAttribute("data-webpack") == dataWebpackPrefix + key) { script = s; break; }
+/******/ 				}
+/******/ 			}
+/******/ 			if(!script) {
+/******/ 				needAttach = true;
+/******/ 				script = document.createElement('script');
+/******/ 		
+/******/ 				script.charset = 'utf-8';
+/******/ 				if (__webpack_require__.nc) {
+/******/ 					script.setAttribute("nonce", __webpack_require__.nc);
+/******/ 				}
+/******/ 				script.setAttribute("data-webpack", dataWebpackPrefix + key);
+/******/ 		
+/******/ 				script.src = url;
+/******/ 			}
+/******/ 			inProgress[url] = [done];
+/******/ 			var onScriptComplete = (prev, event) => {
+/******/ 				// avoid mem leaks in IE.
+/******/ 				script.onerror = script.onload = null;
+/******/ 				clearTimeout(timeout);
+/******/ 				var doneFns = inProgress[url];
+/******/ 				delete inProgress[url];
+/******/ 				script.parentNode && script.parentNode.removeChild(script);
+/******/ 				doneFns && doneFns.forEach((fn) => (fn(event)));
+/******/ 				if(prev) return prev(event);
+/******/ 			}
+/******/ 			var timeout = setTimeout(onScriptComplete.bind(null, undefined, { type: 'timeout', target: script }), 120000);
+/******/ 			script.onerror = onScriptComplete.bind(null, script.onerror);
+/******/ 			script.onload = onScriptComplete.bind(null, script.onload);
+/******/ 			needAttach && document.head.appendChild(script);
+/******/ 		};
+/******/ 	})();
+/******/ 	
 /******/ 	/* webpack/runtime/make namespace object */
 /******/ 	(() => {
 /******/ 		// define __esModule on exports
@@ -249,15 +291,6 @@ eval("{/* (ignored) */\n\n//# sourceURL=webpack://lexical-cartography-of-covid-1
 /******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
 /******/ 			}
 /******/ 			Object.defineProperty(exports, '__esModule', { value: true });
-/******/ 		};
-/******/ 	})();
-/******/ 	
-/******/ 	/* webpack/runtime/node module decorator */
-/******/ 	(() => {
-/******/ 		__webpack_require__.nmd = (module) => {
-/******/ 			module.paths = [];
-/******/ 			if (!module.children) module.children = [];
-/******/ 			return module;
 /******/ 		};
 /******/ 	})();
 /******/ 	
@@ -295,7 +328,44 @@ eval("{/* (ignored) */\n\n//# sourceURL=webpack://lexical-cartography-of-covid-1
 /******/ 			"main": 0
 /******/ 		};
 /******/ 		
-/******/ 		// no chunk on demand loading
+/******/ 		__webpack_require__.f.j = (chunkId, promises) => {
+/******/ 				// JSONP chunk loading for javascript
+/******/ 				var installedChunkData = __webpack_require__.o(installedChunks, chunkId) ? installedChunks[chunkId] : undefined;
+/******/ 				if(installedChunkData !== 0) { // 0 means "already installed".
+/******/ 		
+/******/ 					// a Promise means "currently loading".
+/******/ 					if(installedChunkData) {
+/******/ 						promises.push(installedChunkData[2]);
+/******/ 					} else {
+/******/ 						if(true) { // all chunks have JS
+/******/ 							// setup Promise in chunk cache
+/******/ 							var promise = new Promise((resolve, reject) => (installedChunkData = installedChunks[chunkId] = [resolve, reject]));
+/******/ 							promises.push(installedChunkData[2] = promise);
+/******/ 		
+/******/ 							// start chunk loading
+/******/ 							var url = __webpack_require__.p + __webpack_require__.u(chunkId);
+/******/ 							// create error before stack unwound to get useful stacktrace later
+/******/ 							var error = new Error();
+/******/ 							var loadingEnded = (event) => {
+/******/ 								if(__webpack_require__.o(installedChunks, chunkId)) {
+/******/ 									installedChunkData = installedChunks[chunkId];
+/******/ 									if(installedChunkData !== 0) installedChunks[chunkId] = undefined;
+/******/ 									if(installedChunkData) {
+/******/ 										var errorType = event && (event.type === 'load' ? 'missing' : event.type);
+/******/ 										var realSrc = event && event.target && event.target.src;
+/******/ 										error.message = 'Loading chunk ' + chunkId + ' failed.\n(' + errorType + ': ' + realSrc + ')';
+/******/ 										error.name = 'ChunkLoadError';
+/******/ 										error.type = errorType;
+/******/ 										error.request = realSrc;
+/******/ 										installedChunkData[1](error);
+/******/ 									}
+/******/ 								}
+/******/ 							};
+/******/ 							__webpack_require__.l(url, loadingEnded, "chunk-" + chunkId, chunkId);
+/******/ 						}
+/******/ 					}
+/******/ 				}
+/******/ 		};
 /******/ 		
 /******/ 		// no prefetching
 /******/ 		
@@ -342,7 +412,7 @@ eval("{/* (ignored) */\n\n//# sourceURL=webpack://lexical-cartography-of-covid-1
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module depends on other loaded chunks and execution need to be delayed
-/******/ 	var __webpack_exports__ = __webpack_require__.O(undefined, ["vendors-node_modules_normalize_css_normalize_css-node_modules_pixi-viewport_dist_viewport_es_-c5ea6e"], () => (__webpack_require__("./src/index.js")))
+/******/ 	var __webpack_exports__ = __webpack_require__.O(undefined, ["vendors-node_modules_normalize_css_normalize_css-node_modules_d3-force-3d_src_simulation_js-n-1b7b74"], () => (__webpack_require__("./src/index.js")))
 /******/ 	__webpack_exports__ = __webpack_require__.O(__webpack_exports__);
 /******/ 	
 /******/ })()

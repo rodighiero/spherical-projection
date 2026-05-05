@@ -58,7 +58,7 @@ Promise.all([
     d3.json(nodes),
     d3.json(links)
 
-]).then(([nodes, links]) => {
+]).then(async ([nodes, links]) => {
 
     s.links = links
     s.nodes = nodes
@@ -68,7 +68,7 @@ Promise.all([
     // Build the initial projection before any drawing happens
     s.projection = buildProjection('Mercator')
 
-    initPixi()
+    await initPixi()
     initLinks()
     initNodes()
     background()

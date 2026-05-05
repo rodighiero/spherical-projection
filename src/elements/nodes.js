@@ -1,18 +1,17 @@
-import * as PIXI from 'pixi.js'
+import { Graphics } from 'pixi.js'
 
 let stage
 
 export function initNodes() {
-    const graphics = new PIXI.Graphics()
+    const graphics = new Graphics()
     stage = s.pixi.addChild(graphics)
 }
 
 export function drawNodes() {
     stage.clear()
-    stage.beginFill(0xffffff, 0.9)
     s.nodes.forEach(node => {
         const pos = s.projection(node.spherical)
-        if (pos) stage.drawCircle(pos[0], pos[1], 2)
+        if (pos) stage.circle(pos[0], pos[1], 2)
     })
-    stage.endFill()
+    stage.fill({ color: 0xffffff, alpha: 0.9 })
 }
