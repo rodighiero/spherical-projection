@@ -6,14 +6,16 @@
     <title>Spherical Projection</title>
 </head>
 
-<body style='background-color: black;'>
+<body style='background-color: white;'>
 
     <canvas id='background'></canvas>
 
-    <div id='projection-panel'>
-        <label>Projection</label>
-        <select id='projection-select'></select>
-    </div>
+    <nav id='projection-menu'></nav>
+    <nav id='controls'>
+        <button data-action='add'>Add time</button>
+        <button data-action='restart'>Restart</button>
+        <button data-action='toggle'>Pause</button>
+    </nav>
 
 </body>
 

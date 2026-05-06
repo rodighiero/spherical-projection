@@ -357,11 +357,11 @@ template {
 * {
 	-webkit-user-select: none;
 	user-select: none;
-	font-family: Arial, Helvetica, sans-serif;
+	font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 body, html {
-	color: rgb(255, 255, 255);
+	color: #000;
 	overflow: hidden;
 	margin: 0;
 }
@@ -373,41 +373,81 @@ canvas {
 	position: absolute;
 }
 
-a {
-	color: rgb(255, 255, 255);
-}
-
-#projection-panel {
+#projection-menu {
 	position: absolute;
-	top: 12px;
-	left: 12px;
-	background: rgba(0, 0, 0, 0.6);
-	padding: 8px 12px;
-	border-radius: 6px;
+	top: 24px;
+	left: 24px;
+	bottom: 80px;
 	display: flex;
-	align-items: center;
-	gap: 8px;
+	flex-direction: column;
+	gap: 2px;
+	font-size: 10px;
+	line-height: 1.4;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	overflow-y: auto;
+	padding-right: 8px;
+	scrollbar-width: thin;
 }
 
-#projection-panel label {
+#projection-menu::-webkit-scrollbar {
+	width: 4px;
+}
+
+#projection-menu::-webkit-scrollbar-thumb {
+	background: rgba(0, 0, 0, 0.2);
+	border-radius: 2px;
+}
+
+#projection-menu button {
+	background: none;
+	border: none;
+	padding: 0;
+	margin: 0;
+	font: inherit;
+	letter-spacing: inherit;
+	text-transform: inherit;
+	color: rgba(0, 0, 0, 0.35);
+	cursor: pointer;
+	text-align: left;
+	transition: color 0.15s ease;
+}
+
+#projection-menu button:hover {
+	color: rgba(0, 0, 0, 0.7);
+}
+
+#projection-menu button.active {
+	color: #000;
+}
+
+#controls {
+	position: absolute;
+	bottom: 24px;
+	left: 24px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
 	font-size: 11px;
-	color: rgba(255, 255, 255, 0.6);
-	letter-spacing: 0.05em;
+	letter-spacing: 0.04em;
 	text-transform: uppercase;
 }
 
-#projection-select {
-	background: rgba(255, 255, 255, 0.08);
-	color: white;
-	border: 1px solid rgba(255, 255, 255, 0.2);
-	border-radius: 4px;
-	padding: 4px 8px;
-	font-size: 12px;
+#controls button {
+	background: none;
+	border: none;
+	padding: 0;
+	margin: 0;
+	font: inherit;
+	letter-spacing: inherit;
+	text-transform: inherit;
+	color: rgba(0, 0, 0, 0.35);
 	cursor: pointer;
-	outline: none;
+	text-align: left;
+	transition: color 0.15s ease;
 }
 
-#projection-select:hover {
-	border-color: rgba(255, 255, 255, 0.5);
+#controls button:hover {
+	color: rgba(0, 0, 0, 0.7);
 }
 

@@ -18,7 +18,7 @@ import initPixi from './elements/pixi.js'
 import { initLinks, refreshGeoPath, drawLinks } from './elements/links.js'
 import { initNodes, drawNodes } from './elements/nodes.js'
 import background from './elements/background'
-import { simulation } from './elements/simulation'
+import { simulation, addTime, restart, pause, resume, isRunning } from './elements/simulation'
 import { PROJECTIONS, buildProjection } from './elements/projection.js'
 
 // Global variables
@@ -33,22 +33,55 @@ window.s = {
 
 // Projection selector
 
+let activeProjection = 'Mercator'
+
 function initProjectionPanel() {
-    const select = document.getElementById('projection-select')
+    const menu = document.getElementById('projection-menu')
 
     Object.keys(PROJECTIONS).forEach(name => {
-        const option = document.createElement('option')
-        option.value = name
-        option.textContent = name
-        if (name === 'Mercator') option.selected = true
-        select.appendChild(option)
-    })
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.textContent = name
+        button.dataset.name = name
+        if (name === activeProjection) button.classList.add('active')
 
-    select.addEventListener('change', () => {
-        s.projection = buildProjection(select.value)
-        refreshGeoPath()
-        drawLinks()
-        drawNodes()
+        button.addEventListener('click', () => {
+            if (name === activeProjection) return
+            activeProjection = name
+            menu.querySelectorAll('button').forEach(b =>
+                b.classList.toggle('active', b.dataset.name === name)
+            )
+            s.projection = buildProjection(name)
+            refreshGeoPath()
+            drawLinks()
+            drawNodes()
+        })
+
+        menu.appendChild(button)
+    })
+}
+
+// Simulation controls
+
+function initControls() {
+    const controls = document.getElementById('controls')
+    const toggleBtn = controls.querySelector('[data-action="toggle"]')
+
+    controls.addEventListener('click', e => {
+        const action = e.target.dataset && e.target.dataset.action
+        if (!action) return
+
+        if (action === 'add') addTime()
+        if (action === 'restart') restart()
+        if (action === 'toggle') {
+            if (isRunning()) {
+                pause()
+                toggleBtn.textContent = 'Resume'
+            } else {
+                resume()
+                toggleBtn.textContent = 'Pause'
+            }
+        }
     })
 }
 
@@ -74,17 +107,18 @@ Promise.all([
     background()
     simulation()
     initProjectionPanel()
+    initControls()
 
     window.onresize = function () {
         background()
-        s.projection = buildProjection(
-            document.getElementById('projection-select').value
-        )
+        s.projection = buildProjection(activeProjection)
         refreshGeoPath()
-        // Keep world bounds in sync with screen so clamp/clampZoom
-        // continue to prevent the empty-frame effect after resize.
-        const D = Math.max(window.innerWidth, window.innerHeight)
-        s.pixi.resize(window.innerWidth, window.innerHeight, D, D)
+        s.pixi.resize(
+            window.innerWidth,
+            window.innerHeight,
+            window.innerWidth,
+            window.innerHeight
+        )
     }
 
 })

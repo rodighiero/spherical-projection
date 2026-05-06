@@ -18,18 +18,17 @@ export default async () => {
     document.body.prepend(app.canvas)
 
     // Create and append viewport.
-    // The projection in projection.js fills the larger screen dimension,
-    // so the world is a square of size max(W, H) centered on the screen.
+    // World matches the screen — the projection is fit inside the window
+    // with a margin in projection.js, so its border stays visible.
 
     const W = window.innerWidth
     const H = window.innerHeight
-    const D = Math.max(W, H)
 
     const viewport = new Viewport({
         screenWidth: W,
         screenHeight: H,
-        worldWidth: D,
-        worldHeight: D,
+        worldWidth: W,
+        worldHeight: H,
         events: app.renderer.events,
     })
     app.stage.addChild(viewport)

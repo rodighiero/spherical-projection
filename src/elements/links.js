@@ -31,11 +31,19 @@ export function refreshGeoPath() {
 
 export function drawLinks() {
     stage.clear()
+
+    // Sphere outline — gives every projection (rectangle for Mercator,
+    // circle for Orthographic, lobed shape for Equal Earth, etc.) a
+    // visible border framed by the window margin.
+    geoPath({ type: 'Sphere' })
+    stage.stroke({ width: 1, color: 0x000000, alpha: 0.5 })
+
+    // Links
     s.links.forEach(link => {
         geoPath({
             type: 'LineString',
             coordinates: [link.source.spherical, link.target.spherical]
         })
     })
-    stage.stroke({ width: 0.5, color: 0xaaaaaa, alpha: 0.5 })
+    stage.stroke({ width: 0.5, color: 0x000000, alpha: 0.3 })
 }
