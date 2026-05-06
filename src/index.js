@@ -86,9 +86,11 @@ function initControls() {
             if (isRunning()) {
                 pause()
                 toggleBtn.textContent = 'Resume'
+                toggleBtn.classList.add('paused')
             } else {
                 resume()
                 toggleBtn.textContent = 'Pause'
+                toggleBtn.classList.remove('paused')
             }
         }
         if (action === 'graticule') {

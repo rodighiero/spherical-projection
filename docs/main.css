@@ -428,11 +428,12 @@ canvas {
 #controls {
 	position: absolute;
 	bottom: 24px;
-	left: 24px;
+	left: 60px;
 	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	font-size: 9px;
+	flex-direction: row;
+	align-items: center;
+	gap: 18px;
+	font-size: 8px;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
 }
@@ -449,7 +450,28 @@ canvas {
 	cursor: pointer;
 	text-align: left;
 	transition: color 0.15s ease;
+	display: inline-flex;
+	align-items: center;
+	line-height: 1;
+	gap: 5px;
 }
+
+#controls button::before {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1em;
+	height: 1em;
+	font-size: 1.2em;
+	line-height: 1;
+	color: inherit;
+}
+
+#controls button[data-action='add']::before       { content: '+'; }
+#controls button[data-action='restart']::before   { content: '↻'; }
+#controls button[data-action='toggle']::before    { content: '⏸'; }
+#controls button[data-action='toggle'].paused::before { content: '▶'; }
+#controls button[data-action='graticule']::before { content: '⊞'; }
 
 #controls button:hover {
 	color: rgba(0, 0, 0, 0.7);
