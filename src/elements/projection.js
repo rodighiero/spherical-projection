@@ -109,9 +109,25 @@ export const PROJECTIONS = {
     'Winkel Tripel':              () => d3p.geoWinkel3(),
 }
 
-// Margin (px) between the projection's outer border and the window edge,
-// so the projection's natural shape is always framed by empty space.
-export const MARGIN = 40
+// Side margins (px). Top/bottom are measured from the actual menu and
+// controls so the projection adapts to however many columns the menu
+// breaks into for the current window width.
+export const MARGIN_X = 60
+export const MARGIN_GAP = 30
+
+function elementBottom(id, fallback) {
+    const el = document.getElementById(id)
+    if (!el) return fallback
+    const r = el.getBoundingClientRect()
+    return r.bottom
+}
+
+function elementTop(id, fallback) {
+    const el = document.getElementById(id)
+    if (!el) return fallback
+    const r = el.getBoundingClientRect()
+    return r.top
+}
 
 export function buildProjection(name) {
     const factory = PROJECTIONS[name]
@@ -119,10 +135,12 @@ export function buildProjection(name) {
 
     const W = window.innerWidth
     const H = window.innerHeight
-    const m = MARGIN
+
+    const top    = elementBottom('projection-menu', 200) + MARGIN_GAP
+    const bottom = elementTop('controls', H - 100) - MARGIN_GAP
 
     return factory().fitExtent(
-        [[m, m], [W - m, H - m]],
+        [[MARGIN_X, top], [W - MARGIN_X, bottom]],
         { type: 'Sphere' }
     )
 }

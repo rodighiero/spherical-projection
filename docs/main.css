@@ -375,31 +375,21 @@ canvas {
 
 #projection-menu {
 	position: absolute;
-	top: 24px;
-	left: 24px;
-	bottom: 80px;
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	font-size: 10px;
-	line-height: 1.4;
+	top: 30px;
+	left: 60px;
+	right: 60px;
+	column-width: 95px;
+	column-gap: 18px;
+	column-fill: balance;
+	font-size: 7px;
+	line-height: 1.8;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	overflow-y: auto;
-	padding-right: 8px;
-	scrollbar-width: thin;
-}
-
-#projection-menu::-webkit-scrollbar {
-	width: 4px;
-}
-
-#projection-menu::-webkit-scrollbar-thumb {
-	background: rgba(0, 0, 0, 0.2);
-	border-radius: 2px;
+	pointer-events: none;
 }
 
 #projection-menu button {
+	display: block;
 	background: none;
 	border: none;
 	padding: 0;
@@ -411,6 +401,20 @@ canvas {
 	cursor: pointer;
 	text-align: left;
 	transition: color 0.15s ease;
+	white-space: nowrap;
+	pointer-events: auto;
+	break-inside: avoid;
+}
+
+#projection-menu button::before {
+	content: '•';
+	display: inline-block;
+	width: 10px;
+	color: transparent;
+}
+
+#projection-menu button.active::before {
+	color: inherit;
 }
 
 #projection-menu button:hover {
@@ -428,7 +432,7 @@ canvas {
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
-	font-size: 11px;
+	font-size: 9px;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
 }
@@ -449,5 +453,9 @@ canvas {
 
 #controls button:hover {
 	color: rgba(0, 0, 0, 0.7);
+}
+
+#controls button.active {
+	color: #000;
 }
 

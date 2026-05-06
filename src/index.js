@@ -17,6 +17,10 @@ import links from './data/links.json'
 import initPixi from './elements/pixi.js'
 import { initLinks, refreshGeoPath, drawLinks } from './elements/links.js'
 import { initNodes, drawNodes } from './elements/nodes.js'
+import {
+    initGraticule, refreshGraticulePath, drawGraticule,
+    setGraticuleVisible, isGraticuleVisible,
+} from './elements/graticule.js'
 import background from './elements/background'
 import { simulation, addTime, restart, pause, resume, isRunning } from './elements/simulation'
 import { PROJECTIONS, buildProjection } from './elements/projection.js'
@@ -53,8 +57,13 @@ function initProjectionPanel() {
             )
             s.projection = buildProjection(name)
             refreshGeoPath()
+            refreshGraticulePath()
             drawLinks()
             drawNodes()
+            drawGraticule()
+            // Reheat so the layout settles into a rotation that suits
+            // the new projection's seams and boundaries.
+            addTime()
         })
 
         menu.appendChild(button)
@@ -82,6 +91,11 @@ function initControls() {
                 toggleBtn.textContent = 'Pause'
             }
         }
+        if (action === 'graticule') {
+            const next = !isGraticuleVisible()
+            setGraticuleVisible(next)
+            e.target.classList.toggle('active', next)
+        }
     })
 }
 
@@ -98,27 +112,42 @@ Promise.all([
     console.log('nodes', s.nodes.length)
     console.log('links', s.links.length)
 
-    // Build the initial projection before any drawing happens
+    // Render menu and controls first so buildProjection can measure
+    // their rendered heights and frame the visualisation around them.
+    initProjectionPanel()
+    initControls()
+
     s.projection = buildProjection('Mercator')
 
     await initPixi()
     initLinks()
     initNodes()
+    initGraticule()
     background()
     simulation()
-    initProjectionPanel()
-    initControls()
 
-    window.onresize = function () {
+    function relayout() {
         background()
+        // Read the freshly laid-out menu/controls to size the projection
         s.projection = buildProjection(activeProjection)
         refreshGeoPath()
+        refreshGraticulePath()
         s.pixi.resize(
             window.innerWidth,
             window.innerHeight,
             window.innerWidth,
             window.innerHeight
         )
+        // Force a redraw — the simulation may have cooled down already
+        drawLinks()
+        drawNodes()
+        drawGraticule()
     }
+
+    // Defer to the next frame so the CSS columns have re-flowed before
+    // we measure the menu height.
+    window.addEventListener('resize', () => {
+        requestAnimationFrame(relayout)
+    })
 
 })
