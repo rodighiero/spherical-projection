@@ -14,16 +14,16 @@ import links from './data/links.json'
 
 // Init
 
-import initPixi from './elements/pixi.js'
-import { initLinks, refreshGeoPath, drawLinks } from './elements/links.js'
-import { initNodes, drawNodes } from './elements/nodes.js'
+import initPixi from './js/pixi.js'
+import { initLinks, refreshGeoPath, drawLinks } from './js/links.js'
+import { initNodes, drawNodes } from './js/nodes.js'
 import {
     initGraticule, refreshGraticulePath, drawGraticule,
     setGraticuleVisible, isGraticuleVisible,
-} from './elements/graticule.js'
-import background from './elements/background'
-import { simulation, addTime, restart, pause, resume, isRunning } from './elements/simulation'
-import { PROJECTIONS, buildProjection } from './elements/projection.js'
+} from './js/graticule.js'
+import background from './js/background'
+import { simulation, addTime, restart, pause, resume, isRunning } from './js/simulation'
+import { PROJECTIONS, buildProjection } from './js/projection.js'
 
 // Global variables
 
