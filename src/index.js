@@ -24,6 +24,8 @@ import {
 import background from './js/background'
 import { simulation, addTime, restart, pause, resume, isRunning } from './js/simulation'
 import { PROJECTIONS, buildProjection, getRotation, setRotation } from './js/projection.js'
+import { setSelected, findNodeAt } from './js/selection.js'
+import { setInfoContent, updateInfoPosition } from './js/info.js'
 
 // Global variables
 
@@ -52,6 +54,7 @@ function selectProjection(name) {
     drawLinks()
     drawNodes()
     drawGraticule()
+    updateInfoPosition()
     // Reheat so the layout settles into a rotation that suits
     // the new projection's seams and boundaries.
     addTime()
@@ -82,12 +85,14 @@ function parseHash() {
     const params = new URLSearchParams(raw)
     const proj = params.get('proj')
     const rStr = params.get('r')
+    const gStr = params.get('g')
     const rotation = rStr
         ? rStr.split(',').map(Number).filter(n => !Number.isNaN(n))
         : null
     return {
         projection: proj && PROJECTIONS[proj] ? proj : null,
         rotation:   rotation && rotation.length === 3 ? rotation : null,
+        graticule:  gStr === '1' ? true : gStr === '0' ? false : null,
     }
 }
 
@@ -96,14 +101,41 @@ function writeHash() {
     const params = new URLSearchParams()
     params.set('proj', activeProjection)
     params.set('r', r)
+    params.set('g', isGraticuleVisible() ? '1' : '0')
     history.replaceState(null, '', '#' + params.toString())
+    updateConfigDisplay()
 }
 
+function updateConfigDisplay() {
+    const projEl = document.getElementById('config-projection')
+    const rotEl  = document.getElementById('config-rotation')
+    const gEl    = document.getElementById('config-graticule')
+    if (!projEl) return
+
+    projEl.textContent = activeProjection
+
+    const r = getRotation()
+    rotEl.textContent = `λ ${r[0].toFixed(0)}° · φ ${r[1].toFixed(0)}°`
+
+    gEl.hidden = !isGraticuleVisible()
+}
+
+// Apply the bits that are safe to set before any drawing has been
+// initialised. Returns the full parsed state so the caller can apply
+// the rest after initGraticule() has created its PIXI stage.
 function applyHashState() {
     const state = parseHash()
-    if (!state) return
+    if (!state) return null
     if (state.projection) activeProjection = state.projection
     if (state.rotation)   setRotation(state.rotation)
+    return state
+}
+
+function applyHashStateLate(state) {
+    if (!state || state.graticule === null) return
+    setGraticuleVisible(state.graticule)
+    const btn = document.querySelector('#controls [data-action="graticule"]')
+    if (btn) btn.classList.toggle('active', state.graticule)
 }
 
 // Simulation controls
@@ -133,6 +165,7 @@ function initControls() {
             const next = !isGraticuleVisible()
             setGraticuleVisible(next)
             e.target.classList.toggle('active', next)
+            writeHash()
         }
     })
 }
@@ -160,7 +193,7 @@ Promise.all([
 
     // Pick up projection + rotation from the URL hash, if present,
     // before anything that depends on activeProjection runs.
-    applyHashState()
+    const initialState = applyHashState()
 
     // Render menu and controls first so buildProjection can measure
     // their rendered heights and frame the visualisation around them.
@@ -173,6 +206,11 @@ Promise.all([
     initLinks()
     initNodes()
     initGraticule()
+
+    // Now that the graticule's PIXI stage exists, apply hash bits that
+    // depend on it (graticule on/off).
+    applyHashStateLate(initialState)
+
     background()
     simulation()
 
@@ -192,6 +230,7 @@ Promise.all([
         drawLinks()
         drawNodes()
         drawGraticule()
+        updateInfoPosition()
     }
 
     // Defer to the next frame so the CSS columns have re-flowed before
@@ -207,6 +246,11 @@ Promise.all([
         if (state.rotation) {
             setRotation(state.rotation)
             s.projection.rotate(state.rotation)
+        }
+        if (state.graticule !== null) {
+            setGraticuleVisible(state.graticule)
+            const btn = document.querySelector('#controls [data-action="graticule"]')
+            if (btn) btn.classList.toggle('active', state.graticule)
         }
         if (state.projection && state.projection !== activeProjection) {
             selectProjection(state.projection)
@@ -233,9 +277,11 @@ function initDragToRotate() {
     canvas.style.cursor = 'grab'
 
     const SENS = 0.3
+    const CLICK_THRESHOLD = 5  // px
     let dragging = false
     let start = null
     let r0 = null
+    let moved = 0
     let pending = false
 
     function scheduleRedraw() {
@@ -245,6 +291,8 @@ function initDragToRotate() {
             drawLinks()
             drawNodes()
             drawGraticule()
+            updateInfoPosition()
+            updateConfigDisplay()
             pending = false
         })
     }
@@ -253,6 +301,7 @@ function initDragToRotate() {
         dragging = true
         start = [e.clientX, e.clientY]
         r0 = getRotation()
+        moved = 0
         canvas.style.cursor = 'grabbing'
         canvas.setPointerCapture(e.pointerId)
     })
@@ -261,6 +310,7 @@ function initDragToRotate() {
         if (!dragging) return
         const dx = e.clientX - start[0]
         const dy = e.clientY - start[1]
+        moved = Math.max(moved, Math.abs(dx) + Math.abs(dy))
         const r = [r0[0] + dx * SENS, r0[1] - dy * SENS, r0[2]]
         // Clamp latitude to keep the pole within reasonable range
         r[1] = Math.max(-90, Math.min(90, r[1]))
@@ -274,8 +324,31 @@ function initDragToRotate() {
         dragging = false
         canvas.style.cursor = 'grab'
         try { canvas.releasePointerCapture(e.pointerId) } catch (_) {}
-        writeHash()
+
+        if (moved < CLICK_THRESHOLD) {
+            // Treat as a click — convert screen coords to viewport
+            // world coords (matters when zoomed in) and pick a node.
+            const w = s.pixi.toWorld(e.clientX, e.clientY)
+            selectNode(findNodeAt(w.x, w.y))
+        } else {
+            writeHash()
+        }
     }
     canvas.addEventListener('pointerup', endDrag)
     canvas.addEventListener('pointercancel', endDrag)
 }
+
+// Selection — drives the info panel and the highlight rendering.
+
+function selectNode(node) {
+    setSelected(node)
+    setInfoContent(node)
+    drawNodes()
+    drawLinks()
+    updateInfoPosition()
+}
+
+// ESC clears the selection.
+window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') selectNode(null)
+})

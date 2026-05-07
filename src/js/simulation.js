@@ -5,6 +5,7 @@
 import { drawLinks } from './links'
 import { drawNodes } from './nodes'
 import { drawGraticule } from './graticule'
+import { updateInfoPosition } from './info'
 
 let worker = null
 let lastAlpha = 1
@@ -35,6 +36,7 @@ export function simulation() {
         drawLinks()
         drawNodes()
         drawGraticule()
+        updateInfoPosition()
     }
 
     // Strip references that won't survive structured cloning, then ship

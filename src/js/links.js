@@ -1,5 +1,6 @@
 import { Graphics } from 'pixi.js'
 import * as d3 from 'd3'
+import { hasSelection, isLinkActive } from './selection'
 
 // Adapts PIXI.Graphics to the canvas 2D context interface that d3.geoPath
 // expects. Path commands accumulate into the Graphics' current path; we
@@ -29,6 +30,8 @@ export function refreshGeoPath() {
     geoPath = d3.geoPath(s.projection, pixiCtx)
 }
 
+const HIGHLIGHT = 0xd62828
+
 export function drawLinks() {
     stage.clear()
 
@@ -38,16 +41,24 @@ export function drawLinks() {
     geoPath({ type: 'Sphere' })
     stage.stroke({ width: 1, color: 0x000000, alpha: 0.5 })
 
-    // Links — skip any whose endpoints haven't been positioned by the
-    // simulation worker yet (happens for one frame at startup).
+    // All links at the same regular intensity, regardless of selection.
     s.links.forEach(link => {
         const a = link.source && link.source.spherical
         const b = link.target && link.target.spherical
         if (!a || !b) return
-        geoPath({
-            type: 'LineString',
-            coordinates: [a, b]
-        })
+        geoPath({ type: 'LineString', coordinates: [a, b] })
     })
     stage.stroke({ width: 0.5, color: 0x000000, alpha: 0.3 })
+
+    if (!hasSelection()) return
+
+    // Active links overlaid in red.
+    s.links.forEach(link => {
+        if (!isLinkActive(link)) return
+        const a = link.source && link.source.spherical
+        const b = link.target && link.target.spherical
+        if (!a || !b) return
+        geoPath({ type: 'LineString', coordinates: [a, b] })
+    })
+    stage.stroke({ width: 1, color: HIGHLIGHT, alpha: 0.75 })
 }
