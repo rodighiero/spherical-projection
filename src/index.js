@@ -109,8 +109,16 @@ Promise.all([
 
 ]).then(async ([nodes, links]) => {
 
-    s.links = links
     s.nodes = nodes
+    // Resolve link source/target IDs to node references — d3-force used
+    // to do this for us, but the simulation now lives in a worker and
+    // mutates its own copy of the data, not ours.
+    const byId = new Map(nodes.map(n => [n.id, n]))
+    s.links = links.map(l => ({
+        ...l,
+        source: byId.get(l.source) || l.source,
+        target: byId.get(l.target) || l.target,
+    }))
     console.log('nodes', s.nodes.length)
     console.log('links', s.links.length)
 

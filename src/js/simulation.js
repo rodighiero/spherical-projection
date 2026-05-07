@@ -1,81 +1,60 @@
-import * as force3D from 'd3-force-3d'
+// Main-thread façade for the simulation worker. The real force loop
+// runs in simulation.worker.js — here we just pump positions back
+// into s.nodes and trigger a redraw on each tick.
 
 import { drawLinks } from './links'
 import { drawNodes } from './nodes'
+import { drawGraticule } from './graticule'
 
-const halfPi = Math.PI / 2
-const asin = (x) => x > 1 ? halfPi : x < -1 ? -halfPi : Math.asin(x)
-const spherical = ([x, y, z]) => [Math.atan2(y, x), asin(z)]
-
-let sim
+let worker = null
+let lastAlpha = 1
 
 export function simulation() {
 
-    const N = s.nodes.length
-    const R = 15 * Math.sqrt(N)
-    // Average geodesic spacing between nodes on the sphere surface,
-    // used as the natural unit for collision radius and link distance.
-    const spacing = 2 * R * Math.sqrt(Math.PI / N)
+    worker = new Worker(
+        new URL('./simulation.worker.js', import.meta.url)
+    )
 
-    // Use d3-force-3d's n-dimensional forces — vanilla d3.force* only act
-    // on x/y, which would leave the z axis undriven during settling.
-    sim = force3D.forceSimulation()
-        .numDimensions(3)
-        .nodes(s.nodes)
-        .alphaDecay(0.01)        // slower cooldown → better settling
-        .velocityDecay(0.35)
-        .force('collide', force3D.forceCollide().radius(spacing * 0.7))
-        .force('charge', force3D.forceManyBody().strength(-spacing * 0.6))
-        .force('link', force3D.forceLink(s.links)
-            .id(d => d.id)
-            .distance(spacing * 1.4)
-            .strength(d => Math.min(1, (d.value || 0.3))))
-        .force('surface', surfaceForce(R))
-        .on('tick', ticked)
-}
+    worker.onmessage = (e) => {
+        const msg = e.data
+        if (msg.type !== 'tick') return
 
-function surfaceForce(R) {
-    return function () {
-        for (const node of s.nodes) {
-            if (node.fx != null) node.x = node.fx
-            if (node.fy != null) node.y = node.fy
-            if (node.fz != null) node.z = node.fz
+        lastAlpha = msg.alpha
+        const buf = msg.positions
+        const nodes = s.nodes
 
-            node.norm = Math.sqrt(node.x ** 2 + node.y ** 2 + node.z ** 2) || 1
-
-            // Project to unit sphere and store as [lon, lat] in degrees
-            node.spherical = spherical([
-                node.x / node.norm,
-                node.y / node.norm,
-                node.z / node.norm
-            ]).map(d => (d * 180) / Math.PI)
-
-            // Pull node toward sphere surface of radius R
-            const f = (1 + R / node.norm) / 2
-            node.x *= f
-            node.y *= f
-            node.z *= f
-
-            // Constrain velocity to tangent plane
-            const sp = (node.vx * node.x + node.vy * node.y + node.vz * node.z) / node.norm ** 2
-            node.vx -= node.x * sp
-            node.vy -= node.y * sp
-            node.vz -= node.z * sp
+        for (let i = 0; i < nodes.length; i++) {
+            const n = nodes[i]
+            const o = i * 5
+            n.x = buf[o]
+            n.y = buf[o + 1]
+            n.z = buf[o + 2]
+            n.spherical = [buf[o + 3], buf[o + 4]]
         }
+
+        drawLinks()
+        drawNodes()
+        drawGraticule()
     }
+
+    // Strip references that won't survive structured cloning, then ship
+    // a clean copy of nodes and links into the worker.
+    worker.postMessage({
+        type: 'init',
+        nodes: s.nodes.map(n => ({ id: n.id })),
+        links: s.links.map(l => ({
+            source: l.source.id != null ? l.source.id : l.source,
+            target: l.target.id != null ? l.target.id : l.target,
+            value: l.value,
+        })),
+    })
 }
 
-export function ticked() {
-    drawLinks()
-    drawNodes()
-}
+// Controls — fire-and-forget messages. We track alpha locally so
+// isRunning() stays synchronous for the Pause/Resume button.
 
-// Controls
-
-export function addTime()  { if (sim) sim.alpha(0.4).restart() }
-export function restart()  { if (sim) sim.alpha(1).restart() }
-export function pause()    { if (sim) sim.stop() }
-export function resume()   { if (sim) sim.alpha(Math.max(sim.alpha(), 0.3)).restart() }
-export function isRunning() {
-    return !!sim && sim.alpha() > sim.alphaMin()
-}
+export function addTime() { worker && worker.postMessage({ type: 'addTime' }); lastAlpha = 0.4 }
+export function restart() { worker && worker.postMessage({ type: 'restart' }); lastAlpha = 1 }
+export function pause()   { worker && worker.postMessage({ type: 'pause' });   lastAlpha = 0 }
+export function resume()  { worker && worker.postMessage({ type: 'resume' });  lastAlpha = Math.max(lastAlpha, 0.3) }
+export function isRunning() { return lastAlpha > 0.001 }

@@ -38,11 +38,15 @@ export function drawLinks() {
     geoPath({ type: 'Sphere' })
     stage.stroke({ width: 1, color: 0x000000, alpha: 0.5 })
 
-    // Links
+    // Links — skip any whose endpoints haven't been positioned by the
+    // simulation worker yet (happens for one frame at startup).
     s.links.forEach(link => {
+        const a = link.source && link.source.spherical
+        const b = link.target && link.target.spherical
+        if (!a || !b) return
         geoPath({
             type: 'LineString',
-            coordinates: [link.source.spherical, link.target.spherical]
+            coordinates: [a, b]
         })
     })
     stage.stroke({ width: 0.5, color: 0x000000, alpha: 0.3 })

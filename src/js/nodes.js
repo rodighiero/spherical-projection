@@ -10,6 +10,7 @@ export function initNodes() {
 export function drawNodes() {
     stage.clear()
     s.nodes.forEach(node => {
+        if (!node.spherical) return
         const pos = s.projection(node.spherical)
         if (pos) stage.circle(pos[0], pos[1], 0.7)
     })
