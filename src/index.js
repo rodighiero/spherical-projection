@@ -23,7 +23,7 @@ import {
 } from './js/graticule.js'
 import background from './js/background'
 import { simulation, addTime, restart, pause, resume, isRunning } from './js/simulation'
-import { PROJECTIONS, buildProjection } from './js/projection.js'
+import { PROJECTIONS, buildProjection, getRotation, setRotation } from './js/projection.js'
 
 // Global variables
 
@@ -152,4 +152,63 @@ Promise.all([
         requestAnimationFrame(relayout)
     })
 
+    initDragToRotate()
+
 })
+
+// Drag anywhere on the canvas to rotate the projection's perspective.
+// Horizontal drag moves longitude (λ), vertical drag moves latitude (φ).
+// Sensitivity in degrees per pixel; redraws are throttled with rAF so
+// we never queue more than one frame of work even on a fast trackpad.
+
+function initDragToRotate() {
+    const canvas = document.querySelector('body > canvas:last-of-type')
+    if (!canvas) return
+    canvas.style.cursor = 'grab'
+
+    const SENS = 0.3
+    let dragging = false
+    let start = null
+    let r0 = null
+    let pending = false
+
+    function scheduleRedraw() {
+        if (pending) return
+        pending = true
+        requestAnimationFrame(() => {
+            drawLinks()
+            drawNodes()
+            drawGraticule()
+            pending = false
+        })
+    }
+
+    canvas.addEventListener('pointerdown', e => {
+        dragging = true
+        start = [e.clientX, e.clientY]
+        r0 = getRotation()
+        canvas.style.cursor = 'grabbing'
+        canvas.setPointerCapture(e.pointerId)
+    })
+
+    canvas.addEventListener('pointermove', e => {
+        if (!dragging) return
+        const dx = e.clientX - start[0]
+        const dy = e.clientY - start[1]
+        const r = [r0[0] + dx * SENS, r0[1] - dy * SENS, r0[2]]
+        // Clamp latitude to keep the pole within reasonable range
+        r[1] = Math.max(-90, Math.min(90, r[1]))
+        setRotation(r)
+        s.projection.rotate(r)
+        scheduleRedraw()
+    })
+
+    function endDrag(e) {
+        if (!dragging) return
+        dragging = false
+        canvas.style.cursor = 'grab'
+        try { canvas.releasePointerCapture(e.pointerId) } catch (_) {}
+    }
+    canvas.addEventListener('pointerup', endDrag)
+    canvas.addEventListener('pointercancel', endDrag)
+}

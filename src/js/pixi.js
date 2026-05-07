@@ -36,16 +36,14 @@ export default async () => {
     s.pixi = viewport
 
     // Activate plugins.
-    // The projection is the visualization's natural extent, so zooming
-    // out below the initial scale is meaningless — disabled here.
-    // Zooming in is still allowed (up to 5x). clamp keeps the world
-    // from being panned outside the screen.
+    // Drag is intentionally NOT enabled here — drag gestures rotate the
+    // sphere instead (see drag-to-rotate handler in index.js). Wheel and
+    // pinch still zoom in (up to 5x); zoom out is disabled because the
+    // projection already fits the window.
 
     viewport
-        .drag()
         .pinch()
         .wheel()
-        .decelerate()
         .clamp({ direction: 'all', underflow: 'center' })
         .clampZoom({ minScale: 1, maxScale: 5 })
 

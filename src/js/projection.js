@@ -115,6 +115,14 @@ export const PROJECTIONS = {
 export const MARGIN_X = 60
 export const MARGIN_GAP = 30
 
+// Persistent rotation [λ, φ, γ] applied on every projection rebuild,
+// so the user's drag-to-rotate carries across projection changes,
+// menu interactions, and window resizes.
+let currentRotation = [0, 0, 0]
+
+export function getRotation() { return currentRotation.slice() }
+export function setRotation(r) { currentRotation = r.slice() }
+
 function elementBottom(id, fallback) {
     const el = document.getElementById(id)
     if (!el) return fallback
@@ -139,8 +147,12 @@ export function buildProjection(name) {
     const top    = elementBottom('projection-menu', 200) + MARGIN_GAP
     const bottom = elementTop('controls', H - 100) - MARGIN_GAP
 
-    return factory().fitExtent(
-        [[MARGIN_X, top], [W - MARGIN_X, bottom]],
-        { type: 'Sphere' }
-    )
+    // Rotation is invariant for sphere bounds, so applying it before
+    // fitExtent doesn't affect the fit calculation.
+    return factory()
+        .rotate(currentRotation)
+        .fitExtent(
+            [[MARGIN_X, top], [W - MARGIN_X, bottom]],
+            { type: 'Sphere' }
+        )
 }
