@@ -1,7 +1,7 @@
 {
-  "name": "lexical-cartography-of-covid-19",
+  "name": "spherical-projection",
   "version": "1.0.0",
-  "description": "This network visualization represents individuals through from their documents. It is based on the idea that authors can be described using their text and that shared vocabulary is an efficient way to draw a space. Individuals that make use of the same terms are situated nearby, beyond any social distance. The result is a lexical space composed of individuals and terms.",
+  "description": "A network laid out on a sphere with d3-force-3d, then unfolded onto the plane through a dozen geographic projections — Mercator, Orthographic, Equal Earth — rendered live with PIXI.js.",
   "scripts": {
     "start": "webpack serve --mode development",
     "build": "webpack --mode production"
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rodighiero/COVID-19.git"
+    "url": "git+https://github.com/rodighiero/spherical-projection.git"
   },
   "author": "Dario Rodighiero",
   "license": "MIT",
