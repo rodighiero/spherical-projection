@@ -39,6 +39,25 @@ window.s = {
 
 let activeProjection = 'Mercator'
 
+function selectProjection(name) {
+    if (name === activeProjection) return
+    if (!PROJECTIONS[name]) return
+    activeProjection = name
+    document.querySelectorAll('#projection-menu button').forEach(b =>
+        b.classList.toggle('active', b.dataset.name === name)
+    )
+    s.projection = buildProjection(name)
+    refreshGeoPath()
+    refreshGraticulePath()
+    drawLinks()
+    drawNodes()
+    drawGraticule()
+    // Reheat so the layout settles into a rotation that suits
+    // the new projection's seams and boundaries.
+    addTime()
+    writeHash()
+}
+
 function initProjectionPanel() {
     const menu = document.getElementById('projection-menu')
 
@@ -48,26 +67,43 @@ function initProjectionPanel() {
         button.textContent = name
         button.dataset.name = name
         if (name === activeProjection) button.classList.add('active')
-
-        button.addEventListener('click', () => {
-            if (name === activeProjection) return
-            activeProjection = name
-            menu.querySelectorAll('button').forEach(b =>
-                b.classList.toggle('active', b.dataset.name === name)
-            )
-            s.projection = buildProjection(name)
-            refreshGeoPath()
-            refreshGraticulePath()
-            drawLinks()
-            drawNodes()
-            drawGraticule()
-            // Reheat so the layout settles into a rotation that suits
-            // the new projection's seams and boundaries.
-            addTime()
-        })
-
+        button.addEventListener('click', () => selectProjection(name))
         menu.appendChild(button)
     })
+}
+
+// URL hash sync — projection name and rotation live in window.location.hash
+// so the current view is shareable and persists across reloads.
+//   #proj=Mercator&r=12.3,-30.0,0.0
+
+function parseHash() {
+    const raw = window.location.hash.slice(1)
+    if (!raw) return null
+    const params = new URLSearchParams(raw)
+    const proj = params.get('proj')
+    const rStr = params.get('r')
+    const rotation = rStr
+        ? rStr.split(',').map(Number).filter(n => !Number.isNaN(n))
+        : null
+    return {
+        projection: proj && PROJECTIONS[proj] ? proj : null,
+        rotation:   rotation && rotation.length === 3 ? rotation : null,
+    }
+}
+
+function writeHash() {
+    const r = getRotation().map(n => n.toFixed(1)).join(',')
+    const params = new URLSearchParams()
+    params.set('proj', activeProjection)
+    params.set('r', r)
+    history.replaceState(null, '', '#' + params.toString())
+}
+
+function applyHashState() {
+    const state = parseHash()
+    if (!state) return
+    if (state.projection) activeProjection = state.projection
+    if (state.rotation)   setRotation(state.rotation)
 }
 
 // Simulation controls
@@ -122,12 +158,16 @@ Promise.all([
     console.log('nodes', s.nodes.length)
     console.log('links', s.links.length)
 
+    // Pick up projection + rotation from the URL hash, if present,
+    // before anything that depends on activeProjection runs.
+    applyHashState()
+
     // Render menu and controls first so buildProjection can measure
     // their rendered heights and frame the visualisation around them.
     initProjectionPanel()
     initControls()
 
-    s.projection = buildProjection('Mercator')
+    s.projection = buildProjection(activeProjection)
 
     await initPixi()
     initLinks()
@@ -160,7 +200,25 @@ Promise.all([
         requestAnimationFrame(relayout)
     })
 
+    // Browser back/forward — re-apply state from the new hash.
+    window.addEventListener('hashchange', () => {
+        const state = parseHash()
+        if (!state) return
+        if (state.rotation) {
+            setRotation(state.rotation)
+            s.projection.rotate(state.rotation)
+        }
+        if (state.projection && state.projection !== activeProjection) {
+            selectProjection(state.projection)
+        } else {
+            drawLinks(); drawNodes(); drawGraticule()
+        }
+    })
+
     initDragToRotate()
+
+    // Persist the initial state (in case nothing was in the hash yet).
+    writeHash()
 
 })
 
@@ -216,6 +274,7 @@ function initDragToRotate() {
         dragging = false
         canvas.style.cursor = 'grab'
         try { canvas.releasePointerCapture(e.pointerId) } catch (_) {}
+        writeHash()
     }
     canvas.addEventListener('pointerup', endDrag)
     canvas.addEventListener('pointercancel', endDrag)
