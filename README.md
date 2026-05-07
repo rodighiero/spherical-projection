@@ -1,48 +1,42 @@
-# Cartography of COVID-19 Scientific Literature
+# Spherical Projection
 
-Network visualizations are useuful instrument to have a distant view from a subject. This visualization was created to give an idea of the scientific community behind the COVID-19 subject. Who they are? When they began? With whom they work? Which are their specializationtions?
+A network drawn on a sphere, then unfolded onto the plane through any of nearly ninety geographic projections — Mercator, Orthographic, Cahill Butterfly, Peirce Quincuncial, and so on.
 
-## Method
+## The idea
 
-Using an open-source database called <a href='https://pages.semanticscholar.org/coronavirus-research'>COVID&#8209;19 Open Research Dataset (CORD&#8209;19)</a> provided by the <a href='https://allenai.org/'>Allen Institute for AI</a>, scientific article were collected by author and then analyzed with methods of Natural Language Processing. The result is a metric of lexical similarity between authors, which enabled to space out the scientifc community as a network; it means that two authors that make use of the same vocabulary are next to each other. (More information about the method on this article titled [Mapping as a Contemporary Instrument for Orientation in Conferences](https://doi.org/10.5281/zenodo.3611341).)
+Network visualizations are almost always flat. Flatness is convenient — it prints, it scrolls, it sits inside a rectangle — but it pays a price. Some nodes always end up at the edges. When the nodes are people, the edge becomes a kind of demotion: the layout itself produces a hierarchy nobody asked for.
 
-## Use
+A sphere has no edges. Every point is interior, and the same node can be the center simply by turning the globe. The visualization here treats that geometry literally. The force-directed layout runs in three dimensions and a custom force keeps the nodes on the surface of a sphere; the network settles into a pattern of densities rather than centralities. To make the result legible on a screen, the sphere is then flattened with a cartographic projection — the same kind of mathematics cartographers have been using since Ptolemy to put the Earth on a sheet of paper.
 
-Open the cartography at this [URL](https://rodighiero.github.io/COVID-19/). After a few seconds for stabilizing forces, a network composed by the major authors working on the COVID-19 subject takes form. The elevation map in yellow points out as peaks the most active areas of research. When two close authors have a common keyword, that is visible between them with a font size that reflects the edge's weigth. By moving over an author, the relative network of peers is highlighted as well as the keywords that define his/her profile. The left panel shows a few author's information with the most relevant keywords, the nationality of his/her community, and the publication years. On the top right a search function to find a specific author.
+The argument is laid out in full in [Drawing Network Visualizations on a Continuous, Spherical Surface](https://doi.org/10.1109/IV51561.2020.00097), Dario Rodighiero, _IEEE IV 2020_.
 
-## Acknowledgements
+## How it works
 
-The project started during the Digital Humanities Conference 2019 with the spirit to create a cartography of the DH community. At that moment, it was priceless the contribution of Daniele Guido (University of Luxembourg), Philippe Rivière (Visiocarto), and Stephan Risi (MIT).
+Each frame, `d3-force-3d` runs `collide`, `charge`, and `link` forces in 3D on the node positions. A custom `surface` force projects each node onto a sphere of radius `R = 15·√N` and constrains its velocity to the tangent plane, so the simulation walks across the surface instead of drifting through the volume. The unit-vector position is stored on every node as `[longitude, latitude]` in degrees.
 
-This version has been improved thanks to Eveline Wandl-Vogt [from Austrian Academy of Sciences](https://www.oeaw.ac.at) and Elian Carsenat [NamSor](https://www.namsor.com). The data about nationality are generated through the NamSor algorithm; we understand that reasoning by nationality might introduce bias and errors in the interpretation of the visualization, but we still believe that their use can give further insigths on the literary production. Aggregating information is a way to protect the single author and show the data in a collective way. If someone might be unhappy with some error in the _diaspora.csv_, we are available to to modify it.
+The projection chosen from the menu is a `(λ, φ) → (x, y)` function from `d3-geo` or `d3-geo-projection`. Nodes are rendered as small dots through `projection(node.spherical)`. Links are drawn as great-circle geodesics by feeding `LineString` objects to `d3.geoPath`, which interpolates them along the sphere and reprojects every segment — so the same edge appears as a loxodrome on Mercator, a banana arc on Orthographic, and a broken curve across the seams of an interrupted projection. A faint outline of the sphere itself, and an optional graticule, are drawn the same way. Everything renders through PixiJS v8 onto a single WebGL canvas.
 
+## Controls
 
-## Install the code and run your data
+Drag anywhere to rotate the perspective — horizontal moves the longitude, vertical the latitude, and the rotation persists when you switch projection. Scroll or pinch to zoom in (zoom out is disabled because the projection already fits the window). The list along the top is the projection picker; the controls at the bottom-left let you give the simulation more time to settle, restart it cold, pause it, or toggle the graticule overlay.
 
-Clone the repository, the install the libraries by typing `npm install`.
+## Run
 
-Run the local server by typing `npm run start` and open the visualization at this [URL](http://localhost:8080).
-
-If you want to run your data, format the file _./data/authors.json_ properly, according to this structure:
-
-```
-	{
-		"id": 1
-		"name": "Dario Rodighiero",
-		"variants": ["Dario Cesare Rodighiero", "Dario C. Rodighiero"],
-		"docs": 3,
-		"years": {
-			"2019": 1,
-			"2020": 2,
-		},
-		"peers": [
-			2,
-			3,
-		],
-		"text": "Mapping as a Contemporary Instrument for Orientation in Conferences",
-	},
+```sh
+npm install
+npm start
 ```
 
-The authors.json_ is parsed using _analysis.js_, that runs text analysis to compute the lexical distance. To run the analysis type `node analysis`. This algorithm will produce two files, _nodes.json_ and _links.json_ that are the constituents of the network visualization.
+The dev server lives at `http://localhost:8080`. `npm run build` writes the production bundle into `docs/`, ready to be served as a static site (the repo's GitHub Pages publishes from there).
 
-You can now check your visualization at the localhost, or publish its static version using `npm run build` that create the build in the _./docs_ folder.
+## Data
+
+The visualization reads `src/data/nodes.json` and `src/data/links.json`. Replace these with your own — any list of nodes with stable `id`s, and any list of links of the form `{ source, target, value }` — and the rest follows. The default dataset is the lexical network of authors at the Digital Humanities Conference 2019, the case study from the paper.
+
+## Cite
+
+> Rodighiero, D. (2020). _Drawing Network Visualizations on a Continuous, Spherical Surface._ In 2020 24th International Conference Information Visualisation (IV), pp. 573–580. IEEE. https://doi.org/10.1109/IV51561.2020.00097
+
+## License
+
+MIT.

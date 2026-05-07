@@ -390,6 +390,7 @@ canvas {
 
 #projection-menu button {
 	display: block;
+	max-width: 100%;
 	background: none;
 	border: none;
 	padding: 0;
@@ -402,6 +403,8 @@ canvas {
 	text-align: left;
 	transition: color 0.15s ease;
 	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	pointer-events: auto;
 	break-inside: avoid;
 }
@@ -478,6 +481,34 @@ canvas {
 }
 
 #controls button.active {
+	color: #000;
+}
+
+#credit {
+	position: absolute;
+	bottom: 24px;
+	right: 60px;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 4px;
+	font-size: 8px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	line-height: 1;
+}
+
+#credit span {
+	color: #000;
+}
+
+#credit a {
+	color: rgba(0, 0, 0, 0.35);
+	text-decoration: none;
+	transition: color 0.15s ease;
+}
+
+#credit a:hover {
 	color: #000;
 }
 
