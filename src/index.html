@@ -20,6 +20,12 @@
         <p id='search-error' hidden></p>
     </div>
 
+    <!-- Topic picker — shown after search, before fetching -->
+    <div id='topic-picker' hidden>
+        <p id='topic-picker-label'>Select a topic</p>
+        <ul id='topic-list'></ul>
+    </div>
+
     <!-- Loading state — shown while fetching from OpenAlex -->
     <div id='loading-overlay' hidden>
         <div id='loading-steps'>
@@ -42,6 +48,7 @@
     <!-- Active state decorations — shown once a network is loaded -->
     <div id='query-chip' hidden>
         <span id='query-chip-label'></span>
+        <span id='query-chip-stats'></span>
         <button id='new-query-btn'>new query</button>
     </div>
 

@@ -49,7 +49,7 @@ self.onmessage = (e) => {
                 // clusters push each other apart globally. Barnes-Hut
                 // approximation (default theta=0.9) keeps this affordable.
                 .force('charge', force3D.forceManyBody()
-                    .strength(-spacing * 0.25)
+                    .strength(-spacing * 0.5)
                     .distanceMax(R))
                 // Shorter target distance + a stronger floor on link
                 // strength so even weak links keep their endpoints close.
@@ -58,6 +58,7 @@ self.onmessage = (e) => {
                     .distance(spacing * 0.9)
                     .strength(d => Math.max(0.4, Math.min(1, d.value || 0.5))))
                 .force('surface', surfaceForce(R))
+                .force('centroid', centroidForce())
                 .on('tick', emitTick)
 
             // Send the initial post-construction positions immediately so
@@ -70,6 +71,25 @@ self.onmessage = (e) => {
         case 'restart': sim && sim.alpha(1).restart(); break
         case 'pause':   sim && sim.stop(); break
         case 'resume':  sim && sim.alpha(Math.max(sim.alpha(), 0.3)).restart(); break
+    }
+}
+
+// Counteracts centroid drift — the tendency of link forces to pull the
+// whole network toward one hemisphere, leaving a hole on the opposite side.
+// Each tick it measures how far the network's center of mass has strayed
+// from the sphere center and applies a gentle counter-velocity to all nodes.
+function centroidForce() {
+    const STRENGTH = 0.14
+    return function () {
+        let cx = 0, cy = 0, cz = 0
+        const N = nodes.length
+        for (const n of nodes) { cx += n.x; cy += n.y; cz += n.z }
+        cx /= N; cy /= N; cz /= N
+        for (const n of nodes) {
+            n.vx -= cx * STRENGTH
+            n.vy -= cy * STRENGTH
+            n.vz -= cz * STRENGTH
+        }
     }
 }
 

@@ -22,7 +22,7 @@ import { PROJECTIONS, buildProjection, getRotation, setRotation } from './js/pro
 import { setSelected, findNodeAt } from './js/selection.js'
 import { setInfoContent, updateInfoPosition } from './js/info.js'
 import { downloadPNG, downloadSVG } from './js/download.js'
-import { fetchNetwork } from './js/fetcher.js'
+import { fetchNetwork, searchTopics } from './js/fetcher.js'
 
 // Global state
 
@@ -175,6 +175,7 @@ function setLoadingProgress({ step, label, pct }) {
 
 function showSearchOverlay(errorMsg) {
     document.getElementById('search-overlay').hidden  = false
+    document.getElementById('topic-picker').hidden    = true
     document.getElementById('loading-overlay').hidden = true
     document.getElementById('query-chip').hidden      = true
 
@@ -187,8 +188,35 @@ function showSearchOverlay(errorMsg) {
     }
 }
 
+function showTopicPicker(topics) {
+    document.getElementById('search-overlay').hidden  = true
+    document.getElementById('topic-picker').hidden    = false
+    document.getElementById('loading-overlay').hidden = true
+    document.getElementById('query-chip').hidden      = true
+
+    const list = document.getElementById('topic-list')
+    list.innerHTML = ''
+    for (const topic of topics) {
+        const li = document.createElement('li')
+        const name = document.createElement('span')
+        name.className = 'topic-name'
+        name.textContent = topic.display_name
+        const meta = document.createElement('span')
+        meta.className = 'topic-meta'
+        const parts = []
+        if (topic.subfield) parts.push(topic.subfield)
+        if (topic.works_count) parts.push(`${topic.works_count.toLocaleString()} works`)
+        meta.textContent = parts.join(' · ')
+        li.appendChild(name)
+        li.appendChild(meta)
+        li.addEventListener('click', () => runQuery(topic))
+        list.appendChild(li)
+    }
+}
+
 function showLoadingOverlay() {
     document.getElementById('search-overlay').hidden  = true
+    document.getElementById('topic-picker').hidden    = true
     document.getElementById('loading-overlay').hidden = false
     document.getElementById('query-chip').hidden      = true
     setLoadingProgress({ step: 1, label: 'Resolving topic…', pct: 0 })
@@ -196,10 +224,17 @@ function showLoadingOverlay() {
 
 function showQueryChip(query) {
     document.getElementById('search-overlay').hidden  = true
+    document.getElementById('topic-picker').hidden    = true
     document.getElementById('loading-overlay').hidden = true
     const chip = document.getElementById('query-chip')
     chip.hidden = false
     document.getElementById('query-chip-label').textContent = query
+    const statsEl = document.getElementById('query-chip-stats')
+    if (statsEl) {
+        const n = s.nodes.length
+        const l = s.links.length
+        statsEl.textContent = `${n} authors · ${l} links`
+    }
 }
 
 // ── Network launch ────────────────────────────────────────────────────────────
@@ -226,14 +261,28 @@ function loadNetwork(nodes, links) {
 
 // ── Search submission ─────────────────────────────────────────────────────────
 
-async function runQuery(query) {
-    if (!query.trim()) return
+// topic is { id, display_name } as returned by searchTopics
+async function runQuery(topic) {
     showLoadingOverlay()
-
     try {
-        const { nodes, links } = await fetchNetwork(query.trim(), setLoadingProgress)
+        const { nodes, links } = await fetchNetwork(topic, setLoadingProgress)
         loadNetwork(nodes, links)
-        showQueryChip(query.trim())
+        showQueryChip(topic.display_name)
+    } catch (err) {
+        console.error(err)
+        showSearchOverlay(err.message || 'Something went wrong. Try again.')
+    }
+}
+
+async function submitSearch(query) {
+    if (!query.trim()) return
+    try {
+        const topics = await searchTopics(query.trim())
+        if (topics.length === 1) {
+            runQuery(topics[0])
+        } else {
+            showTopicPicker(topics)
+        }
     } catch (err) {
         console.error(err)
         showSearchOverlay(err.message || 'Something went wrong. Try again.')
@@ -245,7 +294,7 @@ function initSearch() {
     const submit = document.getElementById('search-submit')
     const newBtn = document.getElementById('new-query-btn')
 
-    function go() { runQuery(input.value) }
+    function go() { submitSearch(input.value) }
 
     submit.addEventListener('click', go)
     input.addEventListener('keydown', e => { if (e.key === 'Enter') go() })
@@ -263,6 +312,7 @@ function initSearch() {
         drawGraticule()
 
         input.value = ''
+        document.getElementById('topic-picker').hidden = true
         showSearchOverlay()
         input.focus()
     })

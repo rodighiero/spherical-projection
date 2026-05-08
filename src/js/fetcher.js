@@ -30,13 +30,17 @@ function shortId(url) {
     return url ? url.split('/').pop() : null
 }
 
-// ── Step 1 — resolve topic ────────────────────────────────────────────────────
+// ── Step 1 — search topics ────────────────────────────────────────────────────
 
-async function resolveTopic(query) {
-    const data = await get(`${BASE}/topics?search=${encodeURIComponent(query)}&per_page=1`)
-    const topic = data.results?.[0]
-    if (!topic) throw new Error(`No topic found for "${query}".`)
-    return { id: shortId(topic.id), display_name: topic.display_name }
+export async function searchTopics(query) {
+    const data = await get(`${BASE}/topics?search=${encodeURIComponent(query)}&per_page=8&select=id,display_name,subfield,works_count`)
+    if (!data.results?.length) throw new Error(`No topics found for "${query}".`)
+    return data.results.map(t => ({
+        id:           shortId(t.id),
+        display_name: t.display_name,
+        subfield:     t.subfield?.display_name || null,
+        works_count:  t.works_count || 0,
+    }))
 }
 
 // ── Step 2 — fetch top authors ────────────────────────────────────────────────
@@ -64,7 +68,7 @@ async function fetchAuthors(topicId, onProgress) {
         authors.push(...data.results)
 
         const pct = 5 + Math.min(24, Math.round(authors.length / MAX_AUTHORS * 24))
-        onProgress({ step: 1, label: `Fetching authors (${authors.length}…)`, pct })
+        onProgress({ step: 1, label: `Fetching authors (${Math.round(authors.length / MAX_AUTHORS * 100)}%)`, pct })
 
         cursor = data.meta?.next_cursor
         if (!cursor) break
@@ -173,10 +177,8 @@ function buildGraph(authors, edgeMap) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export async function fetchNetwork(query, onProgress) {
-    onProgress({ step: 1, label: 'Resolving topic…', pct: 0 })
-
-    const topic = await resolveTopic(query)
+// topic is { id, display_name } — already resolved by the caller via searchTopics
+export async function fetchNetwork(topic, onProgress) {
     onProgress({ step: 1, label: `Topic: ${topic.display_name}`, pct: 3 })
 
     const authors = await fetchAuthors(topic.id, onProgress)
