@@ -137,26 +137,13 @@ function buildGraph(authors, edgeMap) {
         rawLinks.push({ source: src, target: tgt, papers: count, value: Math.min(1, count / 10) })
     }
 
-    // BFS to find the largest connected component
-    const visited  = new Set()
-    let largest    = []
-
-    for (const { id } of authors) {
-        if (visited.has(id)) continue
-        const component = []
-        const queue     = [id]
-        visited.add(id)
-        while (queue.length) {
-            const cur = queue.shift()
-            component.push(cur)
-            for (const nb of adj.get(cur) || []) {
-                if (!visited.has(nb)) { visited.add(nb); queue.push(nb) }
-            }
-        }
-        if (component.length > largest.length) largest = component
+    // Keep every node that has at least one co-authorship link.
+    // Isolated authors (no connections within the top 1,000) are dropped,
+    // but all connected components — large or small — are retained.
+    const keep = new Set()
+    for (const [id, neighbors] of adj) {
+        if (neighbors.size > 0) keep.add(id)
     }
-
-    const keep = new Set(largest)
 
     const nodes = authors
         .filter(a => keep.has(a.id))

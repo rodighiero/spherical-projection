@@ -10,7 +10,7 @@
 
     <canvas id='background'></canvas>
 
-    <!-- Empty state — shown before any query is run -->
+    <!-- Search / loading state — single overlay handles both phases -->
     <div id='search-overlay'>
         <p id='search-label'>Enter a research topic</p>
         <div id='search-bar'>
@@ -18,35 +18,36 @@
             <button id='search-submit'>→</button>
             <ul id='topic-list' hidden></ul>
         </div>
-        <p id='search-error' hidden></p>
-    </div>
-
-    <!-- Loading state — shown while fetching from OpenAlex -->
-    <div id='loading-overlay' hidden>
-        <div id='loading-steps'>
-            <div class='loading-step' data-step='1'>
+        <!-- Loading list — topic pinned at top, steps appear below it -->
+        <ul id='loading-list' hidden>
+            <li id='loading-topic-item'>
+                <span class='topic-name'></span>
+                <span class='topic-meta'></span>
+            </li>
+            <li class='loading-step' data-step='1'>
                 <span class='step-dot'></span>
                 <span class='step-label'>Fetching authors…</span>
-            </div>
-            <div class='loading-step' data-step='2'>
+            </li>
+            <li class='loading-step' data-step='2'>
                 <span class='step-dot'></span>
                 <span class='step-label'>Building co-authorship…</span>
-            </div>
-            <div class='loading-step' data-step='3'>
+            </li>
+            <li class='loading-step' data-step='3'>
                 <span class='step-dot'></span>
                 <span class='step-label'>Starting simulation…</span>
-            </div>
-        </div>
-        <div id='loading-bar-track'><div id='loading-bar-fill'></div></div>
+            </li>
+        </ul>
+        <div id='loading-bar-track' hidden><div id='loading-bar-fill'></div></div>
+        <p id='search-error' hidden></p>
     </div>
 
     <!-- Active state decorations — shown once a network is loaded -->
     <div id='query-chip' hidden>
         <span id='query-chip-label'></span>
+        <span id='query-chip-subfield'></span>
         <span id='query-chip-stats'></span>
         <span id='query-chip-degree'></span>
         <span id='query-chip-citations'></span>
-        <span id='query-chip-top'></span>
         <button id='new-query-btn'>new query</button>
     </div>
 

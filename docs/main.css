@@ -611,7 +611,7 @@ canvas {
 	display: none;
 }
 
-/* ── Search overlay ──────────────────────────────────────────────────────── */
+/* ── Search / loading overlay (single overlay for both phases) ───────────── */
 
 #search-overlay {
 	position: absolute;
@@ -738,38 +738,58 @@ canvas {
 	color: rgba(0, 0, 0, 0.35);
 }
 
-/* ── Loading overlay ─────────────────────────────────────────────────────── */
+/* ── Loading list ────────────────────────────────────────────────────────── */
 
-#loading-overlay {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
+#loading-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
 	display: flex;
 	flex-direction: column;
-	align-items: flex-start;
-	gap: 8px;
-	min-width: 200px;
+	width: 262px;
+	border: 1px solid rgba(0, 0, 0, 0.25);
+	background: rgba(255, 255, 255, 0.92);
 }
 
-#loading-overlay[hidden] {
+#loading-list[hidden] {
 	display: none;
 }
 
-#loading-steps {
+#loading-topic-item {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 1px;
+	padding: 7px 10px;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+	background: rgba(0, 0, 0, 0.04);
+}
+
+#loading-topic-item .topic-name {
+	font-size: 11px;
+	color: #000;
+}
+
+#loading-topic-item .topic-meta {
+	font-size: 7px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: rgba(0, 0, 0, 0.35);
 }
 
 .loading-step {
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	padding: 7px 10px;
 	font-size: 8px;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
 	color: rgba(0, 0, 0, 0.25);
+	border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.loading-step:last-child {
+	border-bottom: none;
 }
 
 .loading-step.active {
@@ -795,6 +815,10 @@ canvas {
 @keyframes blink {
 	0%, 100% { opacity: 1; }
 	50%       { opacity: 0.2; }
+}
+
+#loading-bar-track[hidden] {
+	display: none;
 }
 
 #loading-bar-track {
@@ -835,10 +859,14 @@ canvas {
 	color: #000;
 }
 
+#query-chip-subfield {
+	color: rgba(0, 0, 0, 0.4);
+	margin-bottom: 2px;
+}
+
 #query-chip-stats,
 #query-chip-degree,
-#query-chip-citations,
-#query-chip-top {
+#query-chip-citations {
 	color: rgba(0, 0, 0, 0.4);
 }
 

@@ -133,9 +133,14 @@ function setLoadingProgress({ step, label, pct }) {
 // ── Search UI ─────────────────────────────────────────────────────────────────
 
 function showSearchOverlay(errorMsg) {
-    document.getElementById('search-overlay').hidden  = false
-    document.getElementById('loading-overlay').hidden = true
-    document.getElementById('query-chip').hidden      = true
+    document.getElementById('search-overlay').hidden    = false
+    document.getElementById('query-chip').hidden        = true
+    // Reset to idle state
+    document.getElementById('search-label').hidden      = false
+    document.getElementById('search-bar').hidden        = false
+    document.getElementById('loading-list').hidden      = true
+    document.getElementById('loading-bar-track').hidden = true
+    document.getElementById('search-input').disabled   = false
 
     const errEl = document.getElementById('search-error')
     if (errorMsg) {
@@ -146,19 +151,31 @@ function showSearchOverlay(errorMsg) {
     }
 }
 
-function showLoadingOverlay() {
-    document.getElementById('search-overlay').hidden  = true
-    document.getElementById('loading-overlay').hidden = false
-    document.getElementById('query-chip').hidden      = true
-    setLoadingProgress({ step: 1, label: 'Resolving topic…', pct: 0 })
+function showLoadingOverlay(topic) {
+    document.getElementById('search-overlay').hidden    = false
+    document.getElementById('query-chip').hidden        = true
+    document.getElementById('search-label').hidden      = true
+    document.getElementById('search-bar').hidden        = true
+    document.getElementById('search-error').hidden      = true
+    document.getElementById('loading-bar-track').hidden = false
+
+    // Populate the pinned topic item
+    document.querySelector('#loading-topic-item .topic-name').textContent = topic.display_name
+    const parts = []
+    if (topic.subfield)    parts.push(topic.subfield)
+    if (topic.works_count) parts.push(`${topic.works_count.toLocaleString()} works`)
+    document.querySelector('#loading-topic-item .topic-meta').textContent = parts.join(' · ')
+
+    document.getElementById('loading-list').hidden = false
+    setLoadingProgress({ step: 1, label: 'Fetching authors…', pct: 0 })
 }
 
-function showQueryChip(query) {
+function showQueryChip(topic) {
     document.getElementById('search-overlay').hidden  = true
-    document.getElementById('loading-overlay').hidden = true
     const chip = document.getElementById('query-chip')
     chip.hidden = false
-    document.getElementById('query-chip-label').textContent = query
+    document.getElementById('query-chip-label').textContent    = topic.display_name
+    document.getElementById('query-chip-subfield').textContent = topic.subfield || ''
 
     const N = s.nodes.length
     const L = s.links.length
@@ -174,12 +191,6 @@ function showQueryChip(query) {
     document.getElementById('query-chip-citations').textContent =
         `${totalCit.toLocaleString()} citations`
 
-    const topNode = s.nodes.reduce(
-        (best, n) => (n.cited_by_count || 0) > (best.cited_by_count || 0) ? n : best,
-        s.nodes[0] || {}
-    )
-    document.getElementById('query-chip-top').textContent =
-        topNode.name ? `top: ${topNode.name}` : ''
 }
 
 // ── Network launch ────────────────────────────────────────────────────────────
@@ -207,11 +218,11 @@ function loadNetwork(nodes, links) {
 // topic is { id, display_name } as returned by searchTopics
 async function runQuery(topic) {
     clearTopicList()
-    showLoadingOverlay()
+    showLoadingOverlay(topic)
     try {
         const { nodes, links } = await fetchNetwork(topic, setLoadingProgress)
         loadNetwork(nodes, links)
-        showQueryChip(topic.display_name)
+        showQueryChip(topic)
     } catch (err) {
         console.error(err)
         showSearchOverlay(err.message || 'Something went wrong. Try again.')
