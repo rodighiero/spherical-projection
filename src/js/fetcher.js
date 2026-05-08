@@ -10,7 +10,7 @@
 // worker and selection code both key on node.id, so string IDs work as-is.
 
 const BASE          = 'https://api.openalex.org'
-const MAX_AUTHORS   = 2000
+const MAX_AUTHORS   = 1000
 const AUTHORS_PAGE  = 200
 const WORKS_BATCH   = 50   // author IDs per works request
 const CONCURRENCY   = 5    // parallel works requests
@@ -108,7 +108,7 @@ async function fetchCoauthorships(authors, onProgress) {
 
         done++
         const pct = 30 + Math.round(done / batches.length * 55)
-        onProgress({ step: 2, label: `Building co-authorship (${done}/${batches.length})`, pct })
+        onProgress({ step: 2, label: `Building co-authorship (${Math.round(done / batches.length * 100)}%)`, pct })
     }
 
     // Run with limited concurrency

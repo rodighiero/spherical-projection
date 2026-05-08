@@ -53,7 +53,6 @@ function selectProjection(name) {
     if (networkActive) { drawLinks(); drawNodes() }
     drawGraticule()
     updateInfoPosition()
-    addTime()
     writeHash()
 }
 
