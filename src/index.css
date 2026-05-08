@@ -119,6 +119,8 @@ canvas {
 #controls button[data-action='toggle']::before    { content: '⏸'; }
 #controls button[data-action='toggle'].paused::before { content: '▶'; }
 #controls button[data-action='graticule']::before { content: '⊞'; }
+#controls button[data-action='download-png']::before { content: '↓'; }
+#controls button[data-action='download-svg']::before { content: '↓'; }
 
 #controls button:hover {
 	color: rgba(0, 0, 0, 0.7);

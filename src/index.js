@@ -26,6 +26,7 @@ import { simulation, addTime, restart, pause, resume, isRunning } from './js/sim
 import { PROJECTIONS, buildProjection, getRotation, setRotation } from './js/projection.js'
 import { setSelected, findNodeAt } from './js/selection.js'
 import { setInfoContent, updateInfoPosition } from './js/info.js'
+import { downloadPNG, downloadSVG } from './js/download.js'
 
 // Global variables
 
@@ -117,7 +118,8 @@ function updateConfigDisplay() {
     const r = getRotation()
     rotEl.textContent = `λ ${r[0].toFixed(0)}° · φ ${r[1].toFixed(0)}°`
 
-    gEl.hidden = !isGraticuleVisible()
+    gEl.textContent = `Graticule ${isGraticuleVisible() ? 'on' : 'off'}`
+    gEl.hidden = false
 }
 
 // Apply the bits that are safe to set before any drawing has been
@@ -167,6 +169,8 @@ function initControls() {
             e.target.classList.toggle('active', next)
             writeHash()
         }
+        if (action === 'download-png') downloadPNG()
+        if (action === 'download-svg') downloadSVG()
     })
 }
 

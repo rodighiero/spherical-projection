@@ -14,6 +14,8 @@ export default async () => {
         resolution: 2,
         autoDensity: true,
         resizeTo: window,
+        // Required so we can read canvas pixels (PNG export) after a render.
+        preserveDrawingBuffer: true,
     })
     document.body.prepend(app.canvas)
 
@@ -34,6 +36,7 @@ export default async () => {
     app.stage.addChild(viewport)
 
     s.pixi = viewport
+    s.canvas = app.canvas
 
     // Activate plugins.
     // Drag is intentionally NOT enabled here — drag gestures rotate the

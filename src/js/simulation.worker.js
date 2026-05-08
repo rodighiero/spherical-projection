@@ -26,14 +26,24 @@ self.onmessage = (e) => {
             sim = force3D.forceSimulation()
                 .numDimensions(3)
                 .nodes(nodes)
-                .alphaDecay(0.01)
-                .velocityDecay(0.35)
-                .force('collide', force3D.forceCollide().radius(spacing * 0.7))
-                .force('charge', force3D.forceManyBody().strength(-spacing * 0.6))
+                // Cool faster so the layout reaches a stable state in
+                // ~6s rather than ~12s, then doesn't have time to drift.
+                .alphaDecay(0.02)
+                .velocityDecay(0.45)
+                // Allow closer packing without overlap.
+                .force('collide', force3D.forceCollide().radius(spacing * 0.55))
+                // Repulsion is gentle and bounded — without distanceMax,
+                // every pair of nodes pushes apart globally and the
+                // network stretches over time.
+                .force('charge', force3D.forceManyBody()
+                    .strength(-spacing * 0.25)
+                    .distanceMax(spacing * 4))
+                // Shorter target distance + a stronger floor on link
+                // strength so even weak links keep their endpoints close.
                 .force('link', force3D.forceLink(links)
                     .id(d => d.id)
-                    .distance(spacing * 1.4)
-                    .strength(d => Math.min(1, (d.value || 0.3))))
+                    .distance(spacing * 0.9)
+                    .strength(d => Math.max(0.4, Math.min(1, d.value || 0.5))))
                 .force('surface', surfaceForce(R))
                 .on('tick', emitTick)
 
