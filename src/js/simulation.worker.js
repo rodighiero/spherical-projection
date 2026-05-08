@@ -39,18 +39,18 @@ self.onmessage = (e) => {
             sim = force3D.forceSimulation()
                 .numDimensions(3)
                 .nodes(nodes)
-                // Cool faster so the layout reaches a stable state in
-                // ~6s rather than ~12s, then doesn't have time to drift.
-                .alphaDecay(0.02)
+                // Slow cooling gives the layout more time to spread across
+                // the sphere before settling (~20s at 60fps).
+                .alphaDecay(0.007)
                 .velocityDecay(0.45)
                 // Allow closer packing without overlap.
                 .force('collide', force3D.forceCollide().radius(spacing * 0.55))
-                // Repulsion is gentle and bounded — without distanceMax,
-                // every pair of nodes pushes apart globally and the
-                // network stretches over time.
+                // Repulsion reaches across the full sphere so distant
+                // clusters push each other apart globally. Barnes-Hut
+                // approximation (default theta=0.9) keeps this affordable.
                 .force('charge', force3D.forceManyBody()
                     .strength(-spacing * 0.25)
-                    .distanceMax(spacing * 4))
+                    .distanceMax(R))
                 // Shorter target distance + a stronger floor on link
                 // strength so even weak links keep their endpoints close.
                 .force('link', force3D.forceLink(links)
