@@ -161,10 +161,7 @@ function showLoadingOverlay(topic) {
 
     // Populate the pinned topic item
     document.querySelector('#loading-topic-item .topic-name').textContent = topic.display_name
-    const parts = []
-    if (topic.subfield)    parts.push(topic.subfield)
-    if (topic.works_count) parts.push(`${topic.works_count.toLocaleString()} works`)
-    document.querySelector('#loading-topic-item .topic-meta').textContent = parts.join(' · ')
+    document.querySelector('#loading-topic-item .topic-meta').textContent = topic.subfield || ''
 
     document.getElementById('loading-list').hidden = false
     setLoadingProgress({ step: 1, label: 'Fetching authors…', pct: 0 })
@@ -246,10 +243,7 @@ function renderTopicList(topics) {
         name.textContent = topic.display_name
         const meta = document.createElement('span')
         meta.className   = 'topic-meta'
-        const parts = []
-        if (topic.subfield)    parts.push(topic.subfield)
-        if (topic.works_count) parts.push(`${topic.works_count.toLocaleString()} works`)
-        meta.textContent = parts.join(' · ')
+        meta.textContent = topic.subfield || ''
         li.appendChild(name)
         li.appendChild(meta)
         li.addEventListener('mousedown', e => {

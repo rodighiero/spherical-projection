@@ -12,8 +12,8 @@
 const BASE          = 'https://api.openalex.org'
 const MAX_AUTHORS   = 1000
 const AUTHORS_PAGE  = 200
-const WORKS_BATCH   = 50   // author IDs per works request
-const CONCURRENCY   = 5    // parallel works requests
+const WORKS_BATCH   = 25   // author IDs per works request
+const CONCURRENCY   = 10   // parallel works requests
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,7 +68,7 @@ async function fetchAuthors(topicId, onProgress) {
         authors.push(...data.results)
 
         const pct = 5 + Math.min(24, Math.round(authors.length / MAX_AUTHORS * 24))
-        onProgress({ step: 1, label: `Fetching authors (${Math.round(authors.length / MAX_AUTHORS * 100)}%)`, pct })
+        onProgress({ step: 1, label: `Fetching top 1000 most-cited authors (${Math.round(authors.length / MAX_AUTHORS * 100)}%)`, pct })
 
         cursor = data.meta?.next_cursor
         if (!cursor) break
@@ -77,45 +77,61 @@ async function fetchAuthors(topicId, onProgress) {
     return authors.slice(0, MAX_AUTHORS)
 }
 
-// ── Step 3 — co-authorship via batched works queries ─────────────────────────
+// ── Step 3 — co-authorship via batched author works ───────────────────────────
+// Fetches works for batches of authors in parallel. A shared seenWorkIds set
+// ensures each work is processed exactly once even when it appears in multiple
+// batches (co-authored by people from different batches).
 
-async function fetchCoauthorships(authors, onProgress) {
-    const authorSet = new Set(authors.map(a => a.id))
-    const edgeMap   = new Map()   // sorted "id1§id2" → shared paper count
+async function fetchCoauthorships(topicId, authors, onProgress) {
+    const authorSet  = new Set(authors.map(a => a.id))
+    const edgeMap    = new Map()
+    const seenWorkIds = new Set()
 
-    // Split authors into chunks of WORKS_BATCH
     const batches = []
     for (let i = 0; i < authors.length; i += WORKS_BATCH) {
         batches.push(authors.slice(i, i + WORKS_BATCH))
     }
 
-    let done = 0
+    let doneBatches = 0
 
     async function processBatch(batch) {
         const ids  = batch.map(a => shortId(a.id)).join('|')
-        const url  = `${BASE}/works?filter=author.id:${ids}&select=authorships&per_page=200`
-        const data = await get(url)
+        const base = `${BASE}/works?filter=topics.id:${topicId},author.id:${ids}&select=id,authorships&per_page=200`
+        let cursor = '*'
 
-        for (const work of data.results || []) {
-            // Collect only authors that are in our set
-            const present = (work.authorships || [])
-                .map(a => a.author?.id)
-                .filter(id => id && authorSet.has(id))
+        while (cursor) {
+            const data = await get(`${base}&cursor=${cursor}`)
 
-            for (let i = 0; i < present.length; i++) {
-                for (let j = i + 1; j < present.length; j++) {
-                    const key = [present[i], present[j]].sort().join('§')
-                    edgeMap.set(key, (edgeMap.get(key) || 0) + 1)
+            for (const work of data.results || []) {
+                if (seenWorkIds.has(work.id)) continue
+                seenWorkIds.add(work.id)
+
+                const present = (work.authorships || [])
+                    .map(a => a.author?.id)
+                    .filter(id => id && authorSet.has(id))
+
+                if (present.length < 2) continue
+
+                for (let i = 0; i < present.length; i++) {
+                    for (let j = i + 1; j < present.length; j++) {
+                        const key = [present[i], present[j]].sort().join('§')
+                        edgeMap.set(key, (edgeMap.get(key) || 0) + 1)
+                    }
                 }
             }
+
+            cursor = data.meta?.next_cursor || null
         }
 
-        done++
-        const pct = 30 + Math.round(done / batches.length * 55)
-        onProgress({ step: 2, label: `Building co-authorship (${Math.round(done / batches.length * 100)}%)`, pct })
+        doneBatches++
+        const pct = 30 + Math.round(doneBatches / batches.length * 55)
+        onProgress({
+            step: 2,
+            label: `Building co-authorship · ${seenWorkIds.size.toLocaleString()} works`,
+            pct,
+        })
     }
 
-    // Run with limited concurrency
     for (let i = 0; i < batches.length; i += CONCURRENCY) {
         await Promise.all(batches.slice(i, i + CONCURRENCY).map(processBatch))
     }
@@ -137,27 +153,17 @@ function buildGraph(authors, edgeMap) {
         rawLinks.push({ source: src, target: tgt, papers: count, value: Math.min(1, count / 10) })
     }
 
-    // Keep every node that has at least one co-authorship link.
-    // Isolated authors (no connections within the top 1,000) are dropped,
-    // but all connected components — large or small — are retained.
-    const keep = new Set()
-    for (const [id, neighbors] of adj) {
-        if (neighbors.size > 0) keep.add(id)
-    }
+    const nodes = authors.map(a => ({
+        id:             a.id,
+        name:           a.display_name,
+        docs:           a.works_count    || 0,
+        cited_by_count: a.cited_by_count || 0,
+        peers:          [...(adj.get(a.id) || [])],
+        topics:         (a.topics || []).slice(0, 8).map(t => t.display_name),
+        institution:    a.last_known_institutions?.[0]?.display_name || null,
+    }))
 
-    const nodes = authors
-        .filter(a => keep.has(a.id))
-        .map(a => ({
-            id:             a.id,
-            name:           a.display_name,
-            docs:           a.works_count    || 0,
-            cited_by_count: a.cited_by_count || 0,
-            peers:          [...(adj.get(a.id) || [])].filter(id => keep.has(id)),
-            topics:         (a.topics || []).slice(0, 8).map(t => t.display_name),
-            institution:    a.last_known_institutions?.[0]?.display_name || null,
-        }))
-
-    const links = rawLinks.filter(l => keep.has(l.source) && keep.has(l.target))
+    const links = rawLinks
 
     return { nodes, links }
 }
@@ -171,7 +177,7 @@ export async function fetchNetwork(topic, onProgress) {
     const authors = await fetchAuthors(topic.id, onProgress)
     if (authors.length < 10) throw new Error(`Too few authors found for "${query}".`)
 
-    const edgeMap = await fetchCoauthorships(authors, onProgress)
+    const edgeMap = await fetchCoauthorships(topic.id, authors, onProgress)
 
     onProgress({ step: 3, label: 'Building graph…', pct: 87 })
     const { nodes, links } = buildGraph(authors, edgeMap)
