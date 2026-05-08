@@ -10,7 +10,8 @@ import { updateInfoPosition } from './info'
 let worker = null
 let lastAlpha = 1
 
-export function simulation() {
+function spawnWorker() {
+    if (worker) worker.terminate()
 
     worker = new Worker(
         new URL('./simulation.worker.js', import.meta.url)
@@ -21,7 +22,7 @@ export function simulation() {
         if (msg.type !== 'tick') return
 
         lastAlpha = msg.alpha
-        const buf = msg.positions
+        const buf   = msg.positions
         const nodes = s.nodes
 
         for (let i = 0; i < nodes.length; i++) {
@@ -38,7 +39,9 @@ export function simulation() {
         drawGraticule()
         updateInfoPosition()
     }
+}
 
+function initWorker() {
     // Strip references that won't survive structured cloning, then ship
     // a clean copy of nodes and links into the worker.
     worker.postMessage({
@@ -47,9 +50,22 @@ export function simulation() {
         links: s.links.map(l => ({
             source: l.source.id != null ? l.source.id : l.source,
             target: l.target.id != null ? l.target.id : l.target,
-            value: l.value,
+            value:  l.value,
         })),
     })
+}
+
+export function simulation() {
+    spawnWorker()
+    initWorker()
+}
+
+// Reset with a completely new dataset — terminates the current worker and
+// starts a fresh one. Call after updating s.nodes and s.links.
+export function resetSimulation() {
+    lastAlpha = 1
+    spawnWorker()
+    initWorker()
 }
 
 // Controls — fire-and-forget messages. We track alpha locally so

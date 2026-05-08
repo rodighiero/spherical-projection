@@ -9,15 +9,19 @@ const OFFSET = 20
 
 let panel = null
 let nameEl = null
+let institutionEl = null
 let metaEl = null
-let tokensEl = null
+let topicsEl = null
+let linkEl = null
 
 function ensure() {
     if (panel) return
-    panel    = document.getElementById('info')
-    nameEl   = document.getElementById('info-name')
-    metaEl   = document.getElementById('info-meta')
-    tokensEl = document.getElementById('info-tokens')
+    panel         = document.getElementById('info')
+    nameEl        = document.getElementById('info-name')
+    institutionEl = document.getElementById('info-institution')
+    metaEl        = document.getElementById('info-meta')
+    topicsEl      = document.getElementById('info-tokens')
+    linkEl        = document.getElementById('info-link')
 }
 
 // Populate the card's text. Cheap; only call on selection change.
@@ -31,18 +35,32 @@ export function setInfoContent(node) {
 
     nameEl.textContent = node.name || `Node ${node.id}`
 
+    if (institutionEl) {
+        institutionEl.textContent = node.institution || ''
+        institutionEl.hidden = !node.institution
+    }
+
     const meta = []
-    if (node.docs) meta.push(`${node.docs} docs`)
-    if (node.peers && node.peers.length) meta.push(`${node.peers.length} peers`)
+    if (node.docs)           meta.push(`${node.docs} works`)
+    if (node.cited_by_count) meta.push(`${node.cited_by_count.toLocaleString()} citations`)
+    if (node.peers && node.peers.length) meta.push(`${node.peers.length} co-authors`)
     metaEl.textContent = meta.join(' · ')
 
-    tokensEl.innerHTML = ''
-    if (node.tokens && node.tokens.length) {
-        node.tokens.slice(0, 8).forEach(t => {
-            const li = document.createElement('li')
-            li.textContent = t.term
-            tokensEl.appendChild(li)
-        })
+    topicsEl.innerHTML = ''
+    const terms = node.topics || (node.tokens || []).map(t => t.term)
+    terms.slice(0, 8).forEach(term => {
+        const li = document.createElement('li')
+        li.textContent = term
+        topicsEl.appendChild(li)
+    })
+
+    if (linkEl) {
+        if (node.id && node.id.startsWith('https://openalex.org/')) {
+            linkEl.href   = node.id
+            linkEl.hidden = false
+        } else {
+            linkEl.hidden = true
+        }
     }
 }
 

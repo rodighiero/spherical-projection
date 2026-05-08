@@ -10,6 +10,41 @@
 
     <canvas id='background'></canvas>
 
+    <!-- Empty state — shown before any query is run -->
+    <div id='search-overlay'>
+        <p id='search-label'>Enter a research topic</p>
+        <div id='search-bar'>
+            <input id='search-input' type='text' placeholder='e.g. virology, machine learning…' autocomplete='off' spellcheck='false' />
+            <button id='search-submit'>→</button>
+        </div>
+        <p id='search-error' hidden></p>
+    </div>
+
+    <!-- Loading state — shown while fetching from OpenAlex -->
+    <div id='loading-overlay' hidden>
+        <div id='loading-steps'>
+            <div class='loading-step' data-step='1'>
+                <span class='step-dot'></span>
+                <span class='step-label'>Fetching authors…</span>
+            </div>
+            <div class='loading-step' data-step='2'>
+                <span class='step-dot'></span>
+                <span class='step-label'>Building co-authorship…</span>
+            </div>
+            <div class='loading-step' data-step='3'>
+                <span class='step-dot'></span>
+                <span class='step-label'>Starting simulation…</span>
+            </div>
+        </div>
+        <div id='loading-bar-track'><div id='loading-bar-fill'></div></div>
+    </div>
+
+    <!-- Active state decorations — shown once a network is loaded -->
+    <div id='query-chip' hidden>
+        <span id='query-chip-label'></span>
+        <button id='new-query-btn'>new query</button>
+    </div>
+
     <nav id='projection-menu'></nav>
     <nav id='controls'>
         <button data-action='add'>Add time</button>
@@ -22,8 +57,10 @@
 
     <aside id='info' hidden>
         <h3 id='info-name'></h3>
+        <p id='info-institution' hidden></p>
         <p id='info-meta'></p>
         <ul id='info-tokens'></ul>
+        <a id='info-link' href='#' target='_blank' rel='noopener' hidden>↗ OpenAlex</a>
     </aside>
 
     <div id='config'>

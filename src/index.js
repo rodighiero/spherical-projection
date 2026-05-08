@@ -7,11 +7,6 @@ import './index.css'
 
 import * as d3 from 'd3'
 
-// Data
-
-import nodes from './data/nodes.json'
-import links from './data/links.json'
-
 // Init
 
 import initPixi from './js/pixi.js'
@@ -22,23 +17,26 @@ import {
     setGraticuleVisible, isGraticuleVisible,
 } from './js/graticule.js'
 import background from './js/background'
-import { simulation, addTime, restart, pause, resume, isRunning } from './js/simulation'
+import { simulation, resetSimulation, addTime, restart, pause, resume, isRunning } from './js/simulation'
 import { PROJECTIONS, buildProjection, getRotation, setRotation } from './js/projection.js'
 import { setSelected, findNodeAt } from './js/selection.js'
 import { setInfoContent, updateInfoPosition } from './js/info.js'
 import { downloadPNG, downloadSVG } from './js/download.js'
+import { fetchNetwork } from './js/fetcher.js'
 
-// Global variables
+// Global state
 
 window.d3 = d3
 
 window.s = {
-    links,
-    nodes,
+    nodes:      [],
+    links:      [],
     projection: null,
 }
 
-// Projection selector
+let networkActive = false   // true once a network has been loaded
+
+// ── Projection selector ───────────────────────────────────────────────────────
 
 let activeProjection = 'Mercator'
 
@@ -52,19 +50,15 @@ function selectProjection(name) {
     s.projection = buildProjection(name)
     refreshGeoPath()
     refreshGraticulePath()
-    drawLinks()
-    drawNodes()
+    if (networkActive) { drawLinks(); drawNodes() }
     drawGraticule()
     updateInfoPosition()
-    // Reheat so the layout settles into a rotation that suits
-    // the new projection's seams and boundaries.
     addTime()
     writeHash()
 }
 
 function initProjectionPanel() {
     const menu = document.getElementById('projection-menu')
-
     Object.keys(PROJECTIONS).forEach(name => {
         const button = document.createElement('button')
         button.type = 'button'
@@ -76,17 +70,15 @@ function initProjectionPanel() {
     })
 }
 
-// URL hash sync — projection name and rotation live in window.location.hash
-// so the current view is shareable and persists across reloads.
-//   #proj=Mercator&r=12.3,-30.0,0.0
+// ── URL hash ──────────────────────────────────────────────────────────────────
 
 function parseHash() {
     const raw = window.location.hash.slice(1)
     if (!raw) return null
     const params = new URLSearchParams(raw)
-    const proj = params.get('proj')
-    const rStr = params.get('r')
-    const gStr = params.get('g')
+    const proj   = params.get('proj')
+    const rStr   = params.get('r')
+    const gStr   = params.get('g')
     const rotation = rStr
         ? rStr.split(',').map(Number).filter(n => !Number.isNaN(n))
         : null
@@ -112,19 +104,13 @@ function updateConfigDisplay() {
     const rotEl  = document.getElementById('config-rotation')
     const gEl    = document.getElementById('config-graticule')
     if (!projEl) return
-
     projEl.textContent = activeProjection
-
     const r = getRotation()
     rotEl.textContent = `λ ${r[0].toFixed(0)}° · φ ${r[1].toFixed(0)}°`
-
     gEl.textContent = `Graticule ${isGraticuleVisible() ? 'on' : 'off'}`
     gEl.hidden = false
 }
 
-// Apply the bits that are safe to set before any drawing has been
-// initialised. Returns the full parsed state so the caller can apply
-// the rest after initGraticule() has created its PIXI stage.
 function applyHashState() {
     const state = parseHash()
     if (!state) return null
@@ -140,17 +126,16 @@ function applyHashStateLate(state) {
     if (btn) btn.classList.toggle('active', state.graticule)
 }
 
-// Simulation controls
+// ── Simulation controls ───────────────────────────────────────────────────────
 
 function initControls() {
-    const controls = document.getElementById('controls')
+    const controls  = document.getElementById('controls')
     const toggleBtn = controls.querySelector('[data-action="toggle"]')
 
     controls.addEventListener('click', e => {
         const action = e.target.dataset && e.target.dataset.action
         if (!action) return
-
-        if (action === 'add') addTime()
+        if (action === 'add')     addTime()
         if (action === 'restart') restart()
         if (action === 'toggle') {
             if (isRunning()) {
@@ -174,126 +159,143 @@ function initControls() {
     })
 }
 
-// Start
+// ── Loading progress UI ───────────────────────────────────────────────────────
 
-Promise.all([
-    d3.json(nodes),
-    d3.json(links)
+function setLoadingProgress({ step, label, pct }) {
+    document.getElementById('loading-bar-fill').style.width = `${pct}%`
 
-]).then(async ([nodes, links]) => {
+    document.querySelectorAll('.loading-step').forEach(el => {
+        const s = parseInt(el.dataset.step)
+        el.classList.toggle('done',   s < step)
+        el.classList.toggle('active', s === step)
+        if (s === step) el.querySelector('.step-label').textContent = label
+    })
+}
 
-    s.nodes = nodes
-    // Resolve link source/target IDs to node references — d3-force used
-    // to do this for us, but the simulation now lives in a worker and
-    // mutates its own copy of the data, not ours.
+// ── Search UI ─────────────────────────────────────────────────────────────────
+
+function showSearchOverlay(errorMsg) {
+    document.getElementById('search-overlay').hidden  = false
+    document.getElementById('loading-overlay').hidden = true
+    document.getElementById('query-chip').hidden      = true
+
+    const errEl = document.getElementById('search-error')
+    if (errorMsg) {
+        errEl.textContent = errorMsg
+        errEl.hidden = false
+    } else {
+        errEl.hidden = true
+    }
+}
+
+function showLoadingOverlay() {
+    document.getElementById('search-overlay').hidden  = true
+    document.getElementById('loading-overlay').hidden = false
+    document.getElementById('query-chip').hidden      = true
+    setLoadingProgress({ step: 1, label: 'Resolving topic…', pct: 0 })
+}
+
+function showQueryChip(query) {
+    document.getElementById('search-overlay').hidden  = true
+    document.getElementById('loading-overlay').hidden = true
+    const chip = document.getElementById('query-chip')
+    chip.hidden = false
+    document.getElementById('query-chip-label').textContent = query
+}
+
+// ── Network launch ────────────────────────────────────────────────────────────
+
+function loadNetwork(nodes, links) {
+    // Resolve link source/target IDs to node object references.
     const byId = new Map(nodes.map(n => [n.id, n]))
+    s.nodes = nodes
     s.links = links.map(l => ({
         ...l,
         source: byId.get(l.source) || l.source,
         target: byId.get(l.target) || l.target,
     }))
-    console.log('nodes', s.nodes.length)
-    console.log('links', s.links.length)
 
-    // Pick up projection + rotation from the URL hash, if present,
-    // before anything that depends on activeProjection runs.
-    const initialState = applyHashState()
-
-    // Render menu and controls first so buildProjection can measure
-    // their rendered heights and frame the visualisation around them.
-    initProjectionPanel()
-    initControls()
-
-    s.projection = buildProjection(activeProjection)
-
-    await initPixi()
-    initLinks()
-    initNodes()
-    initGraticule()
-
-    // Now that the graticule's PIXI stage exists, apply hash bits that
-    // depend on it (graticule on/off).
-    applyHashStateLate(initialState)
-
-    background()
-    simulation()
-
-    function relayout() {
-        background()
-        // Read the freshly laid-out menu/controls to size the projection
-        s.projection = buildProjection(activeProjection)
-        refreshGeoPath()
-        refreshGraticulePath()
-        s.pixi.resize(
-            window.innerWidth,
-            window.innerHeight,
-            window.innerWidth,
-            window.innerHeight
-        )
-        // Force a redraw — the simulation may have cooled down already
-        drawLinks()
-        drawNodes()
-        drawGraticule()
-        updateInfoPosition()
+    if (networkActive) {
+        resetSimulation()
+    } else {
+        simulation()
+        networkActive = true
     }
 
-    // Defer to the next frame so the CSS columns have re-flowed before
-    // we measure the menu height.
-    window.addEventListener('resize', () => {
-        requestAnimationFrame(relayout)
-    })
-
-    // Browser back/forward — re-apply state from the new hash.
-    window.addEventListener('hashchange', () => {
-        const state = parseHash()
-        if (!state) return
-        if (state.rotation) {
-            setRotation(state.rotation)
-            s.projection.rotate(state.rotation)
-        }
-        if (state.graticule !== null) {
-            setGraticuleVisible(state.graticule)
-            const btn = document.querySelector('#controls [data-action="graticule"]')
-            if (btn) btn.classList.toggle('active', state.graticule)
-        }
-        if (state.projection && state.projection !== activeProjection) {
-            selectProjection(state.projection)
-        } else {
-            drawLinks(); drawNodes(); drawGraticule()
-        }
-    })
-
-    initDragToRotate()
-
-    // Persist the initial state (in case nothing was in the hash yet).
     writeHash()
+}
 
-})
+// ── Search submission ─────────────────────────────────────────────────────────
 
-// Drag anywhere on the canvas to rotate the projection's perspective.
-// Horizontal drag moves longitude (λ), vertical drag moves latitude (φ).
-// Sensitivity in degrees per pixel; redraws are throttled with rAF so
-// we never queue more than one frame of work even on a fast trackpad.
+async function runQuery(query) {
+    if (!query.trim()) return
+    showLoadingOverlay()
+
+    try {
+        const { nodes, links } = await fetchNetwork(query.trim(), setLoadingProgress)
+        loadNetwork(nodes, links)
+        showQueryChip(query.trim())
+    } catch (err) {
+        console.error(err)
+        showSearchOverlay(err.message || 'Something went wrong. Try again.')
+    }
+}
+
+function initSearch() {
+    const input  = document.getElementById('search-input')
+    const submit = document.getElementById('search-submit')
+    const newBtn = document.getElementById('new-query-btn')
+
+    function go() { runQuery(input.value) }
+
+    submit.addEventListener('click', go)
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') go() })
+    newBtn.addEventListener('click', () => {
+        // Clear the network from the canvas before returning to search.
+        pause()
+        s.nodes = []
+        s.links = []
+        networkActive = false
+        setSelected(null)
+        setInfoContent(null)
+        drawLinks()
+        drawNodes()
+
+        input.value = ''
+        showSearchOverlay()
+        input.focus()
+    })
+}
+
+// ── Resize & hash navigation ──────────────────────────────────────────────────
+
+function relayout() {
+    background()
+    s.projection = buildProjection(activeProjection)
+    refreshGeoPath()
+    refreshGraticulePath()
+    s.pixi.resize(window.innerWidth, window.innerHeight, window.innerWidth, window.innerHeight)
+    if (networkActive) { drawLinks(); drawNodes() }
+    drawGraticule()
+    updateInfoPosition()
+}
+
+// ── Drag to rotate ────────────────────────────────────────────────────────────
 
 function initDragToRotate() {
     const canvas = document.querySelector('body > canvas:last-of-type')
     if (!canvas) return
     canvas.style.cursor = 'grab'
 
-    const SENS = 0.3
-    const CLICK_THRESHOLD = 5  // px
-    let dragging = false
-    let start = null
-    let r0 = null
-    let moved = 0
-    let pending = false
+    const SENS            = 0.3
+    const CLICK_THRESHOLD = 5
+    let dragging = false, start = null, r0 = null, moved = 0, pending = false
 
     function scheduleRedraw() {
         if (pending) return
         pending = true
         requestAnimationFrame(() => {
-            drawLinks()
-            drawNodes()
+            if (networkActive) { drawLinks(); drawNodes() }
             drawGraticule()
             updateInfoPosition()
             updateConfigDisplay()
@@ -302,10 +304,8 @@ function initDragToRotate() {
     }
 
     canvas.addEventListener('pointerdown', e => {
-        dragging = true
-        start = [e.clientX, e.clientY]
-        r0 = getRotation()
-        moved = 0
+        dragging = true; start = [e.clientX, e.clientY]
+        r0 = getRotation(); moved = 0
         canvas.style.cursor = 'grabbing'
         canvas.setPointerCapture(e.pointerId)
     })
@@ -316,7 +316,6 @@ function initDragToRotate() {
         const dy = e.clientY - start[1]
         moved = Math.max(moved, Math.abs(dx) + Math.abs(dy))
         const r = [r0[0] + dx * SENS, r0[1] - dy * SENS, r0[2]]
-        // Clamp latitude to keep the pole within reasonable range
         r[1] = Math.max(-90, Math.min(90, r[1]))
         setRotation(r)
         s.projection.rotate(r)
@@ -328,21 +327,19 @@ function initDragToRotate() {
         dragging = false
         canvas.style.cursor = 'grab'
         try { canvas.releasePointerCapture(e.pointerId) } catch (_) {}
-
         if (moved < CLICK_THRESHOLD) {
-            // Treat as a click — convert screen coords to viewport
-            // world coords (matters when zoomed in) and pick a node.
             const w = s.pixi.toWorld(e.clientX, e.clientY)
             selectNode(findNodeAt(w.x, w.y))
         } else {
             writeHash()
         }
     }
+
     canvas.addEventListener('pointerup', endDrag)
     canvas.addEventListener('pointercancel', endDrag)
 }
 
-// Selection — drives the info panel and the highlight rendering.
+// ── Selection ─────────────────────────────────────────────────────────────────
 
 function selectNode(node) {
     setSelected(node)
@@ -352,7 +349,51 @@ function selectNode(node) {
     updateInfoPosition()
 }
 
-// ESC clears the selection.
 window.addEventListener('keydown', e => {
     if (e.key === 'Escape') selectNode(null)
 })
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+
+;(async () => {
+    const initialState = applyHashState()
+
+    initProjectionPanel()
+    initControls()
+    initSearch()
+
+    s.projection = buildProjection(activeProjection)
+
+    await initPixi()
+    initLinks()
+    initNodes()
+    initGraticule()
+
+    applyHashStateLate(initialState)
+
+    background()
+
+    window.addEventListener('resize', () => requestAnimationFrame(relayout))
+
+    window.addEventListener('hashchange', () => {
+        const state = parseHash()
+        if (!state) return
+        if (state.rotation) { setRotation(state.rotation); s.projection.rotate(state.rotation) }
+        if (state.graticule !== null) {
+            setGraticuleVisible(state.graticule)
+            const btn = document.querySelector('#controls [data-action="graticule"]')
+            if (btn) btn.classList.toggle('active', state.graticule)
+        }
+        if (state.projection && state.projection !== activeProjection) {
+            selectProjection(state.projection)
+        } else if (networkActive) {
+            drawLinks(); drawNodes(); drawGraticule()
+        }
+    })
+
+    initDragToRotate()
+
+    // Start with the search overlay — no data yet.
+    showSearchOverlay()
+    document.getElementById('search-input').focus()
+})()
