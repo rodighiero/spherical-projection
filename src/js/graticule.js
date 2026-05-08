@@ -31,7 +31,7 @@ export function refreshGraticulePath() {
 
 export function drawGraticule() {
     stage.clear()
-    if (!stage.visible) return
+    if (!stage.visible || !s.nodes.length) return
     geoPath(graticule)
     // Same thickness as the sphere border (1px), lighter alpha so the
     // grid reads as an overlay rather than competing with the network.

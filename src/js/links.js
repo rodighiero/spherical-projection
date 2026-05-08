@@ -46,6 +46,7 @@ const STYLE_ACTIVE = { width: 1,   color: HIGHLIGHT, alpha: 0.75 }
 
 export function drawLinks() {
     stage.clear()
+    if (!s.nodes.length) return
 
     // Sphere outline — gives every projection (rectangle for Mercator,
     // circle for Orthographic, lobed shape for Equal Earth, etc.) a

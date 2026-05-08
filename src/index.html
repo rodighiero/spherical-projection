@@ -16,14 +16,9 @@
         <div id='search-bar'>
             <input id='search-input' type='text' placeholder='e.g. virology, machine learning…' autocomplete='off' spellcheck='false' />
             <button id='search-submit'>→</button>
+            <ul id='topic-list' hidden></ul>
         </div>
         <p id='search-error' hidden></p>
-    </div>
-
-    <!-- Topic picker — shown after search, before fetching -->
-    <div id='topic-picker' hidden>
-        <p id='topic-picker-label'>Select a topic</p>
-        <ul id='topic-list'></ul>
     </div>
 
     <!-- Loading state — shown while fetching from OpenAlex -->
@@ -49,6 +44,9 @@
     <div id='query-chip' hidden>
         <span id='query-chip-label'></span>
         <span id='query-chip-stats'></span>
+        <span id='query-chip-degree'></span>
+        <span id='query-chip-citations'></span>
+        <span id='query-chip-top'></span>
         <button id='new-query-btn'>new query</button>
     </div>
 

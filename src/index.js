@@ -54,7 +54,7 @@ function selectProjection(name) {
     if (networkActive) { drawLinks(); drawNodes() }
     drawGraticule()
     updateInfoPosition()
-    writeHash()
+    updateConfigDisplay()
 }
 
 function initProjectionPanel() {
@@ -70,34 +70,7 @@ function initProjectionPanel() {
     })
 }
 
-// ── URL hash ──────────────────────────────────────────────────────────────────
-
-function parseHash() {
-    const raw = window.location.hash.slice(1)
-    if (!raw) return null
-    const params = new URLSearchParams(raw)
-    const proj   = params.get('proj')
-    const rStr   = params.get('r')
-    const gStr   = params.get('g')
-    const rotation = rStr
-        ? rStr.split(',').map(Number).filter(n => !Number.isNaN(n))
-        : null
-    return {
-        projection: proj && PROJECTIONS[proj] ? proj : null,
-        rotation:   rotation && rotation.length === 3 ? rotation : null,
-        graticule:  gStr === '1' ? true : gStr === '0' ? false : null,
-    }
-}
-
-function writeHash() {
-    const r = getRotation().map(n => n.toFixed(1)).join(',')
-    const params = new URLSearchParams()
-    params.set('proj', activeProjection)
-    params.set('r', r)
-    params.set('g', isGraticuleVisible() ? '1' : '0')
-    history.replaceState(null, '', '#' + params.toString())
-    updateConfigDisplay()
-}
+// ── Config display ────────────────────────────────────────────────────────────
 
 function updateConfigDisplay() {
     const projEl = document.getElementById('config-projection')
@@ -109,21 +82,6 @@ function updateConfigDisplay() {
     rotEl.textContent = `λ ${r[0].toFixed(0)}° · φ ${r[1].toFixed(0)}°`
     gEl.textContent = `Graticule ${isGraticuleVisible() ? 'on' : 'off'}`
     gEl.hidden = false
-}
-
-function applyHashState() {
-    const state = parseHash()
-    if (!state) return null
-    if (state.projection) activeProjection = state.projection
-    if (state.rotation)   setRotation(state.rotation)
-    return state
-}
-
-function applyHashStateLate(state) {
-    if (!state || state.graticule === null) return
-    setGraticuleVisible(state.graticule)
-    const btn = document.querySelector('#controls [data-action="graticule"]')
-    if (btn) btn.classList.toggle('active', state.graticule)
 }
 
 // ── Simulation controls ───────────────────────────────────────────────────────
@@ -152,7 +110,7 @@ function initControls() {
             const next = !isGraticuleVisible()
             setGraticuleVisible(next)
             e.target.classList.toggle('active', next)
-            writeHash()
+            updateConfigDisplay()
         }
         if (action === 'download-png') downloadPNG()
         if (action === 'download-svg') downloadSVG()
@@ -176,7 +134,6 @@ function setLoadingProgress({ step, label, pct }) {
 
 function showSearchOverlay(errorMsg) {
     document.getElementById('search-overlay').hidden  = false
-    document.getElementById('topic-picker').hidden    = true
     document.getElementById('loading-overlay').hidden = true
     document.getElementById('query-chip').hidden      = true
 
@@ -189,35 +146,8 @@ function showSearchOverlay(errorMsg) {
     }
 }
 
-function showTopicPicker(topics) {
-    document.getElementById('search-overlay').hidden  = true
-    document.getElementById('topic-picker').hidden    = false
-    document.getElementById('loading-overlay').hidden = true
-    document.getElementById('query-chip').hidden      = true
-
-    const list = document.getElementById('topic-list')
-    list.innerHTML = ''
-    for (const topic of topics) {
-        const li = document.createElement('li')
-        const name = document.createElement('span')
-        name.className = 'topic-name'
-        name.textContent = topic.display_name
-        const meta = document.createElement('span')
-        meta.className = 'topic-meta'
-        const parts = []
-        if (topic.subfield) parts.push(topic.subfield)
-        if (topic.works_count) parts.push(`${topic.works_count.toLocaleString()} works`)
-        meta.textContent = parts.join(' · ')
-        li.appendChild(name)
-        li.appendChild(meta)
-        li.addEventListener('click', () => runQuery(topic))
-        list.appendChild(li)
-    }
-}
-
 function showLoadingOverlay() {
     document.getElementById('search-overlay').hidden  = true
-    document.getElementById('topic-picker').hidden    = true
     document.getElementById('loading-overlay').hidden = false
     document.getElementById('query-chip').hidden      = true
     setLoadingProgress({ step: 1, label: 'Resolving topic…', pct: 0 })
@@ -225,17 +155,31 @@ function showLoadingOverlay() {
 
 function showQueryChip(query) {
     document.getElementById('search-overlay').hidden  = true
-    document.getElementById('topic-picker').hidden    = true
     document.getElementById('loading-overlay').hidden = true
     const chip = document.getElementById('query-chip')
     chip.hidden = false
     document.getElementById('query-chip-label').textContent = query
-    const statsEl = document.getElementById('query-chip-stats')
-    if (statsEl) {
-        const n = s.nodes.length
-        const l = s.links.length
-        statsEl.textContent = `${n} authors · ${l} links`
-    }
+
+    const N = s.nodes.length
+    const L = s.links.length
+
+    document.getElementById('query-chip-stats').textContent =
+        `${N.toLocaleString()} authors · ${L.toLocaleString()} links`
+
+    const avgDeg = N ? (2 * L / N).toFixed(1) : 0
+    document.getElementById('query-chip-degree').textContent =
+        `avg ${avgDeg} co-authors`
+
+    const totalCit = s.nodes.reduce((sum, n) => sum + (n.cited_by_count || 0), 0)
+    document.getElementById('query-chip-citations').textContent =
+        `${totalCit.toLocaleString()} citations`
+
+    const topNode = s.nodes.reduce(
+        (best, n) => (n.cited_by_count || 0) > (best.cited_by_count || 0) ? n : best,
+        s.nodes[0] || {}
+    )
+    document.getElementById('query-chip-top').textContent =
+        topNode.name ? `top: ${topNode.name}` : ''
 }
 
 // ── Network launch ────────────────────────────────────────────────────────────
@@ -256,14 +200,13 @@ function loadNetwork(nodes, links) {
         simulation()
         networkActive = true
     }
-
-    writeHash()
 }
 
 // ── Search submission ─────────────────────────────────────────────────────────
 
 // topic is { id, display_name } as returned by searchTopics
 async function runQuery(topic) {
+    clearTopicList()
     showLoadingOverlay()
     try {
         const { nodes, links } = await fetchNetwork(topic, setLoadingProgress)
@@ -275,19 +218,44 @@ async function runQuery(topic) {
     }
 }
 
-async function submitSearch(query) {
-    if (!query.trim()) return
-    try {
-        const topics = await searchTopics(query.trim())
-        if (topics.length === 1) {
-            runQuery(topics[0])
-        } else {
-            showTopicPicker(topics)
-        }
-    } catch (err) {
-        console.error(err)
-        showSearchOverlay(err.message || 'Something went wrong. Try again.')
+// ── Topic list helpers ────────────────────────────────────────────────────────
+
+let _liveTopics = []   // last fetched topic results
+
+function renderTopicList(topics) {
+    _liveTopics = topics
+    const list = document.getElementById('topic-list')
+    list.innerHTML = ''
+    if (!topics.length) { list.hidden = true; return }
+
+    for (const topic of topics) {
+        const li   = document.createElement('li')
+        const name = document.createElement('span')
+        name.className   = 'topic-name'
+        name.textContent = topic.display_name
+        const meta = document.createElement('span')
+        meta.className   = 'topic-meta'
+        const parts = []
+        if (topic.subfield)    parts.push(topic.subfield)
+        if (topic.works_count) parts.push(`${topic.works_count.toLocaleString()} works`)
+        meta.textContent = parts.join(' · ')
+        li.appendChild(name)
+        li.appendChild(meta)
+        li.addEventListener('mousedown', e => {
+            // mousedown fires before input blur, so we can intercept the click
+            e.preventDefault()
+            runQuery(topic)
+        })
+        list.appendChild(li)
     }
+    list.hidden = false
+}
+
+function clearTopicList() {
+    _liveTopics = []
+    const list = document.getElementById('topic-list')
+    list.innerHTML = ''
+    list.hidden = true
 }
 
 function initSearch() {
@@ -295,12 +263,34 @@ function initSearch() {
     const submit = document.getElementById('search-submit')
     const newBtn = document.getElementById('new-query-btn')
 
-    function go() { submitSearch(input.value) }
+    // Live search — debounced 300 ms
+    let debounce = null
+    input.addEventListener('input', () => {
+        clearTimeout(debounce)
+        const q = input.value.trim()
+        if (!q) { clearTopicList(); return }
+        debounce = setTimeout(async () => {
+            try {
+                const topics = await searchTopics(q)
+                // Only render if the input still matches (user may have kept typing)
+                if (input.value.trim() === q) renderTopicList(topics)
+            } catch (_) {
+                clearTopicList()
+            }
+        }, 300)
+    })
 
+    // Enter / submit — pick the first result in the live list
+    function go() {
+        if (_liveTopics.length) runQuery(_liveTopics[0])
+    }
     submit.addEventListener('click', go)
     input.addEventListener('keydown', e => { if (e.key === 'Enter') go() })
+
+    // Hide list on blur (unless user is clicking a list item — prevented by mousedown)
+    input.addEventListener('blur', () => clearTopicList())
+
     newBtn.addEventListener('click', () => {
-        // Restore canvas to the initial empty-frame state.
         pause()
         s.nodes = []
         s.links = []
@@ -308,12 +298,12 @@ function initSearch() {
         setSelected(null)
         setInfoContent(null)
         background()
-        drawLinks()    // redraws sphere outline with no links
-        drawNodes()    // clears node stage
+        drawLinks()
+        drawNodes()
         drawGraticule()
 
         input.value = ''
-        document.getElementById('topic-picker').hidden = true
+        clearTopicList()
         showSearchOverlay()
         input.focus()
     })
@@ -386,8 +376,6 @@ function initDragToRotate() {
         if (moved < CLICK_THRESHOLD) {
             const w = s.pixi.toWorld(e.clientX, e.clientY)
             selectNode(findNodeAt(w.x, w.y))
-        } else {
-            writeHash()
         }
     }
 
@@ -412,9 +400,6 @@ window.addEventListener('keydown', e => {
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 ;(async () => {
-    const initialState = applyHashState()
-    s.networkRotation = d3.geoRotation(getRotation())
-
     initProjectionPanel()
     initControls()
     initSearch()
@@ -426,31 +411,12 @@ window.addEventListener('keydown', e => {
     initNodes()
     initGraticule()
 
-    applyHashStateLate(initialState)
-
     background()
 
     window.addEventListener('resize', () => requestAnimationFrame(relayout))
 
-    window.addEventListener('hashchange', () => {
-        const state = parseHash()
-        if (!state) return
-        if (state.rotation) { setRotation(state.rotation); s.networkRotation = d3.geoRotation(state.rotation) }
-        if (state.graticule !== null) {
-            setGraticuleVisible(state.graticule)
-            const btn = document.querySelector('#controls [data-action="graticule"]')
-            if (btn) btn.classList.toggle('active', state.graticule)
-        }
-        if (state.projection && state.projection !== activeProjection) {
-            selectProjection(state.projection)
-        } else if (networkActive) {
-            drawLinks(); drawNodes(); drawGraticule()
-        }
-    })
-
     initDragToRotate()
 
-    // Start with the search overlay — no data yet.
     showSearchOverlay()
     document.getElementById('search-input').focus()
 })()
