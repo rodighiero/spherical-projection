@@ -251,15 +251,17 @@ function initSearch() {
     submit.addEventListener('click', go)
     input.addEventListener('keydown', e => { if (e.key === 'Enter') go() })
     newBtn.addEventListener('click', () => {
-        // Clear the network from the canvas before returning to search.
+        // Restore canvas to the initial empty-frame state.
         pause()
         s.nodes = []
         s.links = []
         networkActive = false
         setSelected(null)
         setInfoContent(null)
-        drawLinks()
-        drawNodes()
+        background()
+        drawLinks()    // redraws sphere outline with no links
+        drawNodes()    // clears node stage
+        drawGraticule()
 
         input.value = ''
         showSearchOverlay()

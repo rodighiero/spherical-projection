@@ -23,6 +23,19 @@ self.onmessage = (e) => {
             const R = 15 * Math.sqrt(N)
             const spacing = 2 * R * Math.sqrt(Math.PI / N)
 
+            // Seed every node on a Fibonacci sphere so the simulation
+            // starts from a near-uniform distribution rather than a
+            // random clump. d3-force only initialises nodes that lack
+            // x/y/z, so setting them here takes precedence.
+            const PHI = (1 + Math.sqrt(5)) / 2
+            for (let i = 0; i < N; i++) {
+                const theta = Math.acos(1 - 2 * (i + 0.5) / N)
+                const phi   = 2 * Math.PI * i / PHI
+                nodes[i].x  = R * Math.sin(theta) * Math.cos(phi)
+                nodes[i].y  = R * Math.sin(theta) * Math.sin(phi)
+                nodes[i].z  = R * Math.cos(theta)
+            }
+
             sim = force3D.forceSimulation()
                 .numDimensions(3)
                 .nodes(nodes)
@@ -53,7 +66,7 @@ self.onmessage = (e) => {
             break
         }
 
-        case 'addTime': sim && sim.alpha(0.4).restart(); break
+        case 'addTime': sim && sim.alpha(Math.max(sim.alpha(), 0.05)).restart(); break
         case 'restart': sim && sim.alpha(1).restart(); break
         case 'pause':   sim && sim.stop(); break
         case 'resume':  sim && sim.alpha(Math.max(sim.alpha(), 0.3)).restart(); break
