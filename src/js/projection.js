@@ -150,7 +150,6 @@ export function buildProjection(name) {
     // Rotation is invariant for sphere bounds, so applying it before
     // fitExtent doesn't affect the fit calculation.
     return factory()
-        .rotate(currentRotation)
         .fitExtent(
             [[MARGIN_X, top], [W - MARGIN_X, bottom]],
             { type: 'Sphere' }

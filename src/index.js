@@ -29,9 +29,10 @@ import { fetchNetwork, searchTopics } from './js/fetcher.js'
 window.d3 = d3
 
 window.s = {
-    nodes:      [],
-    links:      [],
-    projection: null,
+    nodes:           [],
+    links:           [],
+    projection:      null,
+    networkRotation: d3.geoRotation([0, 0, 0]),
 }
 
 let networkActive = false   // true once a network has been loaded
@@ -338,7 +339,6 @@ function initDragToRotate() {
     if (!canvas) return
     canvas.style.cursor = 'grab'
 
-    const SENS            = 0.3
     const CLICK_THRESHOLD = 5
     let dragging = false, start = null, r0 = null, moved = 0, pending = false
 
@@ -366,10 +366,15 @@ function initDragToRotate() {
         const dx = e.clientX - start[0]
         const dy = e.clientY - start[1]
         moved = Math.max(moved, Math.abs(dx) + Math.abs(dy))
-        const r = [r0[0] + dx * SENS, r0[1] - dy * SENS, r0[2]]
+
+        // Convert pixel delta to degrees using the projection's actual
+        // scale (pixels per radian). This gives 1:1 cursor-to-network
+        // movement regardless of which projection or window size is active.
+        const sens = 180 / (Math.PI * s.projection.scale())
+        const r = [r0[0] + dx * sens, r0[1] - dy * sens, r0[2]]
         r[1] = Math.max(-90, Math.min(90, r[1]))
         setRotation(r)
-        s.projection.rotate(r)
+        s.networkRotation = d3.geoRotation(r)
         scheduleRedraw()
     })
 
@@ -408,6 +413,7 @@ window.addEventListener('keydown', e => {
 
 ;(async () => {
     const initialState = applyHashState()
+    s.networkRotation = d3.geoRotation(getRotation())
 
     initProjectionPanel()
     initControls()
@@ -429,7 +435,7 @@ window.addEventListener('keydown', e => {
     window.addEventListener('hashchange', () => {
         const state = parseHash()
         if (!state) return
-        if (state.rotation) { setRotation(state.rotation); s.projection.rotate(state.rotation) }
+        if (state.rotation) { setRotation(state.rotation); s.networkRotation = d3.geoRotation(state.rotation) }
         if (state.graticule !== null) {
             setGraticuleVisible(state.graticule)
             const btn = document.querySelector('#controls [data-action="graticule"]')
