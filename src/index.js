@@ -358,9 +358,13 @@ function initDragToRotate() {
     }
 
     canvas.addEventListener('pointerdown', e => {
+        if (pendingR) {
+            setRotation(pendingR)
+            s.networkRotation = d3.geoRotation(pendingR)
+            pendingR = null
+        }
         dragging = true; start = [e.clientX, e.clientY]
         r0 = getRotation(); moved = 0
-        // Compute once per gesture — scale() doesn't change during a drag.
         sens = 180 / (Math.PI * s.projection.scale())
         canvas.style.cursor = 'grabbing'
         canvas.setPointerCapture(e.pointerId)
