@@ -9,6 +9,8 @@
 // IDs are OpenAlex URL strings ("https://openalex.org/A…"). The simulation
 // worker and selection code both key on node.id, so string IDs work as-is.
 
+import { getCached, setCached } from './cache'
+
 const BASE          = 'https://api.openalex.org'
 const MAX_AUTHORS   = 1000
 const AUTHORS_PAGE  = 200
@@ -164,6 +166,12 @@ function buildGraph(authors, edgeMap) {
 
 // topic is { id, display_name } — already resolved by the caller via searchTopics
 export async function fetchNetwork(topic, onProgress) {
+    const cached = getCached(topic.id)
+    if (cached) {
+        onProgress({ step: 3, label: 'Loaded from cache', pct: 100 })
+        return cached
+    }
+
     onProgress({ step: 1, label: `Topic: ${topic.display_name}`, pct: 3 })
 
     const authors = await fetchAuthors(topic.id, onProgress)
@@ -173,6 +181,8 @@ export async function fetchNetwork(topic, onProgress) {
 
     onProgress({ step: 3, label: 'Building graph…', pct: 87 })
     const { nodes, links } = buildGraph(authors, edgeMap)
+
+    setCached(topic.id, nodes, links)
 
     onProgress({ step: 3, label: 'Starting simulation…', pct: 95 })
     return { nodes, links }

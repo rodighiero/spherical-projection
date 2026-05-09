@@ -9,6 +9,19 @@ import {
 } from './selection'
 
 const HIGHLIGHT = '#d62828'
+const CROP_PAD  = 8   // px breathing room around the sphere border
+
+// Returns the bounding box of the projected sphere in CSS pixels,
+// expanded by CROP_PAD so the border stroke is never clipped.
+function frameBounds() {
+    const [[x0, y0], [x1, y1]] = d3.geoPath(s.projection).bounds({ type: 'Sphere' })
+    return {
+        x: Math.floor(x0) - CROP_PAD,
+        y: Math.floor(y0) - CROP_PAD,
+        w: Math.ceil(x1 - x0) + CROP_PAD * 2,
+        h: Math.ceil(y1 - y0) + CROP_PAD * 2,
+    }
+}
 
 function triggerDownload(blob, filename) {
     const url = URL.createObjectURL(blob)
@@ -22,22 +35,23 @@ function triggerDownload(blob, filename) {
 }
 
 export function downloadPNG() {
-    const W = window.innerWidth
-    const H = window.innerHeight
+    const { x, y, w, h } = frameBounds()
     const scale = 2  // matches PIXI's resolution
 
     const out = document.createElement('canvas')
-    out.width = W * scale
-    out.height = H * scale
+    out.width  = w * scale
+    out.height = h * scale
     const ctx = out.getContext('2d')
 
-    // White ground first.
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, out.width, out.height)
 
-    // PIXI canvas (transparent overlay) on top.
+    // Copy only the frame region from the PIXI canvas (which is 2× resolution).
     if (s.canvas) {
-        ctx.drawImage(s.canvas, 0, 0, out.width, out.height)
+        ctx.drawImage(s.canvas,
+            x * scale, y * scale, w * scale, h * scale,
+            0, 0, w * scale, h * scale
+        )
     }
 
     out.toBlob(blob => {
@@ -46,16 +60,15 @@ export function downloadPNG() {
 }
 
 export function downloadSVG() {
-    const W = window.innerWidth
-    const H = window.innerHeight
+    const { x, y, w, h } = frameBounds()
     const path = d3.geoPath(s.projection)
 
     const parts = []
     parts.push(
         `<svg xmlns="http://www.w3.org/2000/svg" ` +
-        `width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
+        `width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}">`
     )
-    parts.push(`<rect width="${W}" height="${H}" fill="white"/>`)
+    parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="white"/>`)
 
     // Sphere outline
     const sphereD = path({ type: 'Sphere' })
