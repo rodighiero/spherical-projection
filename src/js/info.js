@@ -72,7 +72,7 @@ export function updateInfoPosition() {
     const node = getSelected()
     if (!node || !node.spherical || panel.hidden) return
 
-    const world = s.projection(s.networkRotation(node.spherical))
+    const world = s.projection(node.spherical)
     if (!world) return
 
     const screen = s.pixi.toScreen(world[0], world[1])

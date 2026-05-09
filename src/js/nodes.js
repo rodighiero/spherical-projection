@@ -16,7 +16,7 @@ export function drawNodes() {
     // never changes — the highlight is purely additive on top.
     s.nodes.forEach(node => {
         if (!node.spherical) return
-        const pos = s.projection(s.networkRotation(node.spherical))
+        const pos = s.projection(node.spherical)
         if (pos) stage.circle(pos[0], pos[1], 0.7)
     })
     stage.fill({ color: 0x000000, alpha: 0.9 })
@@ -26,7 +26,7 @@ export function drawNodes() {
     // Neighbours: red dot, a bit larger.
     s.nodes.forEach(node => {
         if (!node.spherical || !isNeighbor(node)) return
-        const pos = s.projection(s.networkRotation(node.spherical))
+        const pos = s.projection(node.spherical)
         if (pos) stage.circle(pos[0], pos[1], 1.4)
     })
     stage.fill({ color: HIGHLIGHT, alpha: 1 })
@@ -34,7 +34,7 @@ export function drawNodes() {
     // Selected node: bigger red dot with an outer ring.
     const sel = getSelected()
     if (sel && sel.spherical) {
-        const pos = s.projection(s.networkRotation(sel.spherical))
+        const pos = s.projection(sel.spherical)
         if (pos) {
             stage.circle(pos[0], pos[1], 2.8)
             stage.fill({ color: HIGHLIGHT, alpha: 1 })

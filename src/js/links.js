@@ -61,7 +61,7 @@ export function drawLinks() {
         const a = link.source && link.source.spherical
         const b = link.target && link.target.spherical
         if (!a || !b) return
-        geoPath({ type: 'LineString', coordinates: [s.networkRotation(a), s.networkRotation(b)] })
+        geoPath({ type: 'LineString', coordinates: [a, b] })
     })
     pixiCtx.flush()
 
@@ -74,7 +74,7 @@ export function drawLinks() {
         const a = link.source && link.source.spherical
         const b = link.target && link.target.spherical
         if (!a || !b) return
-        geoPath({ type: 'LineString', coordinates: [s.networkRotation(a), s.networkRotation(b)] })
+        geoPath({ type: 'LineString', coordinates: [a, b] })
     })
     pixiCtx.flush()
 }

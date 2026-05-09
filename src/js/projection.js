@@ -60,13 +60,6 @@ export const PROJECTIONS = discoverProjections()
 export const MARGIN_X   = 60
 export const MARGIN_GAP = 30
 
-// ── Rotation state (used only for drag tracking, not embedded in projection) ─
-
-let currentRotation = [0, 0, 0]
-
-export function getRotation() { return currentRotation.slice() }
-export function setRotation(r) { currentRotation = r.slice() }
-
 // ── Projection builder ────────────────────────────────────────────────────────
 
 function elementEdge(id, edge, fallback) {

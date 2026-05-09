@@ -19,7 +19,7 @@ import {
 } from './js/graticule.js'
 import background from './js/background'
 import { simulation, resetSimulation, addTime, restart, pause, resume, isRunning } from './js/simulation'
-import { PROJECTIONS, buildProjection, getRotation, setRotation } from './js/projection.js'
+import { PROJECTIONS, buildProjection } from './js/projection.js'
 import { setSelected, findNodeAt } from './js/selection.js'
 import { setInfoContent, updateInfoPosition } from './js/info.js'
 import { downloadPNG, downloadSVG } from './js/download.js'
@@ -30,10 +30,9 @@ import { fetchNetwork, searchTopics } from './js/fetcher.js'
 window.d3 = d3
 
 window.s = {
-    nodes:           [],
-    links:           [],
-    projection:      null,
-    networkRotation: d3.geoRotation([0, 0, 0]),
+    nodes:      [],
+    links:      [],
+    projection: null,
 }
 
 let networkActive = false   // true once a network has been loaded
@@ -75,12 +74,9 @@ function initProjectionPanel() {
 
 function updateConfigDisplay() {
     const projEl = document.getElementById('config-projection')
-    const rotEl  = document.getElementById('config-rotation')
     const gEl    = document.getElementById('config-graticule')
     if (!projEl) return
     projEl.textContent = activeProjection
-    const r = getRotation()
-    rotEl.textContent = `λ ${r[0].toFixed(0)}° · φ ${r[1].toFixed(0)}°`
     gEl.textContent = `Graticule ${isGraticuleVisible() ? 'on' : 'off'}`
     gEl.hidden = false
 }
@@ -337,22 +333,20 @@ function initDragToRotate() {
     if (!canvas) return
 
     const CLICK_THRESHOLD = 5
-    let pending = false, pendingR = null
-    let v0, q0, r0, moved
+    let pending = false, pendingRotate = null
+    let v0, initialPositions, moved
 
     function scheduleRedraw() {
         if (pending) return
         pending = true
         requestAnimationFrame(() => {
-            if (pendingR) {
-                setRotation(pendingR)
-                s.networkRotation = d3.geoRotation(pendingR)
-                pendingR = null
+            if (pendingRotate && initialPositions) {
+                s.nodes.forEach((node, i) => {
+                    if (initialPositions[i]) node.spherical = pendingRotate(initialPositions[i])
+                })
+                pendingRotate = null
             }
             if (networkActive) { drawLinks(); drawNodes() }
-            drawGraticule()
-            updateInfoPosition()
-            updateConfigDisplay()
             pending = false
         })
     }
@@ -361,31 +355,30 @@ function initDragToRotate() {
         d3.drag()
             .on('start', event => {
                 canvas.style.cursor = 'grabbing'
-                if (pendingR) {
-                    setRotation(pendingR)
-                    s.networkRotation = d3.geoRotation(pendingR)
-                    pendingR = null
-                }
-                r0 = getRotation()
                 const geo = s.projection.invert([event.x, event.y])
                 v0 = geo ? versor.cartesian(geo) : null
-                q0 = versor(r0)
+                initialPositions = s.nodes.map(n => n.spherical ? n.spherical.slice() : null)
                 moved = 0
             })
             .on('drag', event => {
                 moved += Math.hypot(event.dx, event.dy)
+                if (!v0) return
                 const geo1 = s.projection.invert([event.x, event.y])
-                if (v0 && geo1) {
-                    const q1 = versor.multiply(versor.delta(v0, versor.cartesian(geo1)), q0)
-                    pendingR = versor.rotation(q1)
-                } else {
-                    const sens = 180 / (Math.PI * s.projection.scale())
-                    pendingR = [r0[0] + event.x * sens, r0[1] - event.y * sens, r0[2]]
-                }
+                if (!geo1) return
+                const delta = versor.rotation(versor.delta(v0, versor.cartesian(geo1)))
+                pendingRotate = d3.geoRotation(delta)
                 scheduleRedraw()
             })
             .on('end', event => {
                 canvas.style.cursor = 'grab'
+                if (pendingRotate && initialPositions) {
+                    s.nodes.forEach((node, i) => {
+                        if (initialPositions[i]) node.spherical = pendingRotate(initialPositions[i])
+                    })
+                }
+                initialPositions = null
+                pendingRotate = null
+                pending = false
                 if (moved < CLICK_THRESHOLD) {
                     const w = s.pixi.toWorld(event.x, event.y)
                     selectNode(findNodeAt(w.x, w.y))

@@ -95,7 +95,7 @@ export function downloadSVG() {
     s.links.forEach(link => {
         const a = link.source && link.source.spherical
         const b = link.target && link.target.spherical
-        if (a && b) lines.push([s.networkRotation(a), s.networkRotation(b)])
+        if (a && b) lines.push([a, b])
     })
     const linksD = path({ type: 'MultiLineString', coordinates: lines })
     if (linksD) {
@@ -112,7 +112,7 @@ export function downloadSVG() {
             if (!isLinkActive(link)) return
             const a = link.source && link.source.spherical
             const b = link.target && link.target.spherical
-            if (a && b) active.push([s.networkRotation(a), s.networkRotation(b)])
+            if (a && b) active.push([a, b])
         })
         const activeD = path({ type: 'MultiLineString', coordinates: active })
         if (activeD) {
@@ -127,7 +127,7 @@ export function downloadSVG() {
     parts.push(`<g fill="black" fill-opacity="0.9">`)
     s.nodes.forEach(node => {
         if (!node.spherical) return
-        const pos = s.projection(s.networkRotation(node.spherical))
+        const pos = s.projection(node.spherical)
         if (!pos) return
         parts.push(
             `<circle cx="${pos[0].toFixed(1)}" cy="${pos[1].toFixed(1)}" r="0.7"/>`
@@ -140,7 +140,7 @@ export function downloadSVG() {
         parts.push(`<g fill="${HIGHLIGHT}">`)
         s.nodes.forEach(node => {
             if (!node.spherical || !isNeighbor(node)) return
-            const pos = s.projection(s.networkRotation(node.spherical))
+            const pos = s.projection(node.spherical)
             if (!pos) return
             parts.push(
                 `<circle cx="${pos[0].toFixed(1)}" cy="${pos[1].toFixed(1)}" r="1.4"/>`
@@ -151,7 +151,7 @@ export function downloadSVG() {
         // Selected node + outer ring
         const sel = getSelected()
         if (sel && sel.spherical) {
-            const pos = s.projection(s.networkRotation(sel.spherical))
+            const pos = s.projection(sel.spherical)
             if (pos) {
                 const x = pos[0].toFixed(1)
                 const y = pos[1].toFixed(1)
