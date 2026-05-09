@@ -83,8 +83,9 @@ export function buildProjection(name) {
     const top    = elementEdge('projection-menu', 'bottom', 200) + MARGIN_GAP
     const bottom = elementEdge('controls', 'top', H - 100)       - MARGIN_GAP
 
-    return factory().fitExtent(
-        [[MARGIN_X, top], [W - MARGIN_X, bottom]],
-        { type: 'Sphere' }
-    )
+    const extent = [[MARGIN_X, top], [W - MARGIN_X, bottom]]
+
+    return factory()
+        .fitExtent(extent, { type: 'Sphere' })
+        .clipExtent(extent)
 }

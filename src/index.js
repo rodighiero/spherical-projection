@@ -338,11 +338,17 @@ function initDragToRotate() {
 
     const CLICK_THRESHOLD = 5
     let dragging = false, start = null, r0 = null, moved = 0, pending = false
+    let pendingR = null, sens = 0
 
     function scheduleRedraw() {
         if (pending) return
         pending = true
         requestAnimationFrame(() => {
+            if (pendingR) {
+                setRotation(pendingR)
+                s.networkRotation = d3.geoRotation(pendingR)
+                pendingR = null
+            }
             if (networkActive) { drawLinks(); drawNodes() }
             drawGraticule()
             updateInfoPosition()
@@ -354,6 +360,8 @@ function initDragToRotate() {
     canvas.addEventListener('pointerdown', e => {
         dragging = true; start = [e.clientX, e.clientY]
         r0 = getRotation(); moved = 0
+        // Compute once per gesture — scale() doesn't change during a drag.
+        sens = 180 / (Math.PI * s.projection.scale())
         canvas.style.cursor = 'grabbing'
         canvas.setPointerCapture(e.pointerId)
     })
@@ -364,14 +372,9 @@ function initDragToRotate() {
         const dy = e.clientY - start[1]
         moved = Math.max(moved, Math.abs(dx) + Math.abs(dy))
 
-        // Convert pixel delta to degrees using the projection's actual
-        // scale (pixels per radian). This gives 1:1 cursor-to-network
-        // movement regardless of which projection or window size is active.
-        const sens = 180 / (Math.PI * s.projection.scale())
         const r = [r0[0] + dx * sens, r0[1] - dy * sens, r0[2]]
         r[1] = Math.max(-90, Math.min(90, r[1]))
-        setRotation(r)
-        s.networkRotation = d3.geoRotation(r)
+        pendingR = r
         scheduleRedraw()
     })
 
