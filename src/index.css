@@ -181,12 +181,13 @@ canvas {
 
 #info {
 	position: absolute;
-	width: 170px;
+	width: max-content;
+	max-width: 260px;
 	padding: 7px 9px;
 	font-size: 9px;
 	line-height: 1.4;
 	color: #000;
-	background: rgba(255, 255, 255, 0.65);
+	background: rgba(255, 255, 255, 0.92);
 	border: 1px solid rgba(0, 0, 0, 0.4);
 	pointer-events: auto;
 }
@@ -195,12 +196,20 @@ canvas {
 	display: none;
 }
 
-#info h3 {
+#info-header {
+	display: flex;
+	align-items: baseline;
+	gap: 5px;
 	margin: 0 0 3px 0;
+}
+
+#info h3 {
+	margin: 0;
 	font-size: 10px;
 	font-weight: 600;
 	letter-spacing: 0.02em;
 	color: #000;
+	white-space: nowrap;
 }
 
 #info p {
@@ -225,8 +234,13 @@ canvas {
 	color: rgba(0, 0, 0, 0.75);
 }
 
+#info ul li::before {
+	content: '·';
+	margin-right: 3px;
+}
+
 #info-institution {
-	margin: -2px 0 6px 0;
+	margin: 0;
 	color: rgba(0, 0, 0, 0.4);
 	letter-spacing: 0.03em;
 	font-size: 8px;
@@ -510,7 +524,8 @@ canvas {
 	margin-bottom: 2px;
 }
 
-#query-chip-stats,
+#query-chip-authors,
+#query-chip-links,
 #query-chip-degree,
 #query-chip-citations {
 	color: rgba(0, 0, 0, 0.4);

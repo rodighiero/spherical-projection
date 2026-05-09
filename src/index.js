@@ -171,13 +171,13 @@ function showQueryChip(topic) {
     const chip = document.getElementById('query-chip')
     chip.hidden = false
     document.getElementById('query-chip-label').textContent    = topic.display_name
-    document.getElementById('query-chip-subfield').textContent = topic.subfield || ''
+    document.getElementById('query-chip-subfield').textContent = topic.subfield ? `subfield · ${topic.subfield}` : ''
 
     const N = s.nodes.length
     const L = s.links.length
 
-    document.getElementById('query-chip-stats').textContent =
-        `${N.toLocaleString()} authors · ${L.toLocaleString()} links`
+    document.getElementById('query-chip-authors').textContent = `${N.toLocaleString()} authors`
+    document.getElementById('query-chip-links').textContent   = `${L.toLocaleString()} links`
 
     const avgDeg = N ? (2 * L / N).toFixed(1) : 0
     document.getElementById('query-chip-degree').textContent =

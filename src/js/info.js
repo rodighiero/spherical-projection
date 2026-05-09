@@ -41,8 +41,8 @@ export function setInfoContent(node) {
     }
 
     const meta = []
-    if (node.docs)           meta.push(`${node.docs} works`)
-    if (node.cited_by_count) meta.push(`${node.cited_by_count.toLocaleString()} citations`)
+    if (node.docs)                       meta.push(`${node.docs} works`)
+    if (node.cited_by_count)             meta.push(`${node.cited_by_count.toLocaleString()} citations`)
     if (node.peers && node.peers.length) meta.push(`${node.peers.length} co-authors`)
     metaEl.textContent = meta.join(' · ')
 

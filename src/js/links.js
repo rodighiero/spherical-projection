@@ -17,13 +17,13 @@ class PixiGeoContext {
     beginPath() {
         if (this._pending) { this.g.stroke(this._style); this._pending = false }
     }
-    moveTo(x, y)  { this.g.moveTo(x, y);  this._pending = true }
-    lineTo(x, y)  { this.g.lineTo(x, y) }
+    moveTo(x, y) { this.g.moveTo(x, y); this._pending = true }
+    lineTo(x, y) { this.g.lineTo(x, y) }
     arc(x, y, r, a0, a1, ccw) { this.g.arc(x, y, r, a0, a1, ccw) }
-    closePath()   { this.g.closePath() }
-    flush()       { if (this._pending) { this.g.stroke(this._style); this._pending = false } }
-    stroke() {}
-    fill()   {}
+    closePath() { this.g.closePath() }
+    flush() { if (this._pending) { this.g.stroke(this._style); this._pending = false } }
+    stroke() { }
+    fill() { }
 }
 
 let stage, pixiCtx, geoPath
@@ -39,9 +39,9 @@ export function refreshGeoPath() {
     geoPath = d3.geoPath(s.projection, pixiCtx)
 }
 
-const STYLE_SPHERE = { width: 1,   color: 0x000000, alpha: 0.5  }
-const STYLE_LINK   = { width: 0.5, color: 0x000000, alpha: 0.3  }
-const STYLE_ACTIVE = { width: 1,   color: HIGHLIGHT, alpha: 0.75 }
+const STYLE_SPHERE = { width: 1, color: 0x000000, alpha: 0.5 }
+const STYLE_LINK = { width: 0.2, color: 0x000000, alpha: 1.0 }
+const STYLE_ACTIVE = { width: 0.6, color: HIGHLIGHT, alpha: 1.0 }
 
 export function drawLinks() {
     stage.clear()
