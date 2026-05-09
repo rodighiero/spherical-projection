@@ -6,6 +6,7 @@ import './index.css'
 // Libraries
 
 import * as d3 from 'd3'
+import versor from 'versor'
 
 // Init
 
@@ -334,11 +335,10 @@ function relayout() {
 function initDragToRotate() {
     const canvas = document.querySelector('body > canvas:last-of-type')
     if (!canvas) return
-    canvas.style.cursor = 'grab'
 
     const CLICK_THRESHOLD = 5
-    let dragging = false, start = null, r0 = null, moved = 0, pending = false
-    let pendingR = null, sens = 0
+    let pending = false, pendingR = null
+    let v0, q0, r0, moved
 
     function scheduleRedraw() {
         if (pending) return
@@ -357,44 +357,43 @@ function initDragToRotate() {
         })
     }
 
-    canvas.addEventListener('pointerdown', e => {
-        if (pendingR) {
-            setRotation(pendingR)
-            s.networkRotation = d3.geoRotation(pendingR)
-            pendingR = null
-        }
-        dragging = true; start = [e.clientX, e.clientY]
-        r0 = getRotation(); moved = 0
-        sens = 180 / (Math.PI * s.projection.scale())
-        canvas.style.cursor = 'grabbing'
-        canvas.setPointerCapture(e.pointerId)
-    })
+    d3.select(canvas).call(
+        d3.drag()
+            .on('start', event => {
+                canvas.style.cursor = 'grabbing'
+                if (pendingR) {
+                    setRotation(pendingR)
+                    s.networkRotation = d3.geoRotation(pendingR)
+                    pendingR = null
+                }
+                r0 = getRotation()
+                const geo = s.projection.invert([event.x, event.y])
+                v0 = geo ? versor.cartesian(geo) : null
+                q0 = versor(r0)
+                moved = 0
+            })
+            .on('drag', event => {
+                moved += Math.hypot(event.dx, event.dy)
+                const geo1 = s.projection.invert([event.x, event.y])
+                if (v0 && geo1) {
+                    const q1 = versor.multiply(versor.delta(v0, versor.cartesian(geo1)), q0)
+                    pendingR = versor.rotation(q1)
+                } else {
+                    const sens = 180 / (Math.PI * s.projection.scale())
+                    pendingR = [r0[0] + event.x * sens, r0[1] - event.y * sens, r0[2]]
+                }
+                scheduleRedraw()
+            })
+            .on('end', event => {
+                canvas.style.cursor = 'grab'
+                if (moved < CLICK_THRESHOLD) {
+                    const w = s.pixi.toWorld(event.x, event.y)
+                    selectNode(findNodeAt(w.x, w.y))
+                }
+            })
+    )
 
-    canvas.addEventListener('pointermove', e => {
-        if (!dragging) return
-        const dx = e.clientX - start[0]
-        const dy = e.clientY - start[1]
-        moved = Math.max(moved, Math.abs(dx) + Math.abs(dy))
-
-        const r = [r0[0] + dx * sens, r0[1] - dy * sens, r0[2]]
-        r[1] = Math.max(-90, Math.min(90, r[1]))
-        pendingR = r
-        scheduleRedraw()
-    })
-
-    function endDrag(e) {
-        if (!dragging) return
-        dragging = false
-        canvas.style.cursor = 'grab'
-        try { canvas.releasePointerCapture(e.pointerId) } catch (_) {}
-        if (moved < CLICK_THRESHOLD) {
-            const w = s.pixi.toWorld(e.clientX, e.clientY)
-            selectNode(findNodeAt(w.x, w.y))
-        }
-    }
-
-    canvas.addEventListener('pointerup', endDrag)
-    canvas.addEventListener('pointercancel', endDrag)
+    canvas.style.cursor = 'grab'
 }
 
 // ── Selection ─────────────────────────────────────────────────────────────────

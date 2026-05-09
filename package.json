@@ -33,6 +33,7 @@
     "d3-geo-projection": "^4.0.0",
     "normalize.css": "^8.0.1",
     "pixi-viewport": "^6.0.3",
-    "pixi.js": "^8.18.1"
+    "pixi.js": "^8.18.1",
+    "versor": "^0.2.0"
   }
 }
