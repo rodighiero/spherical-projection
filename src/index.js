@@ -18,7 +18,7 @@ import {
     setGraticuleVisible, isGraticuleVisible,
 } from './js/graticule.js'
 import background from './js/background'
-import { simulation, resetSimulation, addTime, restart, pause, resume, isRunning } from './js/simulation'
+import { simulation, resetSimulation, addTime, restart, pause, resume, isRunning, syncPositions } from './js/simulation'
 import { PROJECTIONS, buildProjection } from './js/projection.js'
 import { setSelected, findNodeAt } from './js/selection.js'
 import { setInfoContent, updateInfoPosition } from './js/info.js'
@@ -334,7 +334,7 @@ function initDragToRotate() {
 
     const CLICK_THRESHOLD = 5
     let pending = false, pendingRotate = null
-    let v0, initialPositions, moved
+    let v0, initialPositions, moved, wasRunning
 
     function scheduleRedraw() {
         if (pending) return
@@ -355,6 +355,8 @@ function initDragToRotate() {
         d3.drag()
             .on('start', event => {
                 canvas.style.cursor = 'grabbing'
+                wasRunning = isRunning()
+                if (wasRunning) pause()
                 const geo = s.projection.invert([event.x, event.y])
                 v0 = geo ? versor.cartesian(geo) : null
                 initialPositions = s.nodes.map(n => n.spherical ? n.spherical.slice() : null)
@@ -379,6 +381,7 @@ function initDragToRotate() {
                 initialPositions = null
                 pendingRotate = null
                 pending = false
+                if (wasRunning) { syncPositions(s.nodes); resume() }
                 if (moved < CLICK_THRESHOLD) {
                     const w = s.pixi.toWorld(event.x, event.y)
                     selectNode(findNodeAt(w.x, w.y))

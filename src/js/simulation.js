@@ -76,3 +76,20 @@ export function restart() { worker && worker.postMessage({ type: 'restart' }); l
 export function pause()   { worker && worker.postMessage({ type: 'pause' });   lastAlpha = 0 }
 export function resume()  { worker && worker.postMessage({ type: 'resume' });  lastAlpha = Math.max(lastAlpha, 0.3) }
 export function isRunning() { return lastAlpha > 0.001 }
+
+export function syncPositions(nodes) {
+    if (!worker) return
+    const N = nodes.length
+    const R = 15 * Math.sqrt(N)
+    const buf = new Float32Array(N * 3)
+    for (let i = 0; i < N; i++) {
+        const sp = nodes[i].spherical
+        if (!sp) continue
+        const lon = sp[0] * Math.PI / 180
+        const lat = sp[1] * Math.PI / 180
+        buf[i * 3    ] = R * Math.cos(lat) * Math.cos(lon)
+        buf[i * 3 + 1] = R * Math.cos(lat) * Math.sin(lon)
+        buf[i * 3 + 2] = R * Math.sin(lat)
+    }
+    worker.postMessage({ type: 'setPositions', positions: buf }, [buf.buffer])
+}

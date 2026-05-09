@@ -71,6 +71,19 @@ self.onmessage = (e) => {
         case 'restart': sim && sim.alpha(1).restart(); break
         case 'pause':   sim && sim.stop(); break
         case 'resume':  sim && sim.alpha(Math.max(sim.alpha(), 0.3)).restart(); break
+
+        case 'setPositions': {
+            const buf = msg.positions   // Float32Array: [x, y, z] per node
+            for (let i = 0; i < nodes.length; i++) {
+                nodes[i].x  = buf[i * 3]
+                nodes[i].y  = buf[i * 3 + 1]
+                nodes[i].z  = buf[i * 3 + 2]
+                nodes[i].vx = 0
+                nodes[i].vy = 0
+                nodes[i].vz = 0
+            }
+            break
+        }
     }
 }
 
