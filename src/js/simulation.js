@@ -75,6 +75,7 @@ export function addTime() { worker && worker.postMessage({ type: 'addTime' }); l
 export function restart() { worker && worker.postMessage({ type: 'restart' }); lastAlpha = 1 }
 export function pause()   { worker && worker.postMessage({ type: 'pause' });   lastAlpha = 0 }
 export function resume()  { worker && worker.postMessage({ type: 'resume' });  lastAlpha = Math.max(lastAlpha, 0.3) }
+export function resumeQuiet() { worker && worker.postMessage({ type: 'resumeQuiet' }) }
 export function isRunning() { return lastAlpha > 0.001 }
 
 export function syncPositions(nodes) {

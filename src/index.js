@@ -18,7 +18,7 @@ import {
     setGraticuleVisible, isGraticuleVisible,
 } from './js/graticule.js'
 import background from './js/background'
-import { simulation, resetSimulation, addTime, restart, pause, resume, isRunning, syncPositions } from './js/simulation'
+import { simulation, resetSimulation, addTime, restart, pause, resume, resumeQuiet, isRunning, syncPositions } from './js/simulation'
 import { PROJECTIONS, buildProjection } from './js/projection.js'
 import { setSelected, findNodeAt } from './js/selection.js'
 import { setInfoContent, updateInfoPosition } from './js/info.js'
@@ -381,7 +381,7 @@ function initDragToRotate() {
                 initialPositions = null
                 pendingRotate = null
                 pending = false
-                if (wasRunning) { syncPositions(s.nodes); resume() }
+                if (wasRunning) { syncPositions(s.nodes); resumeQuiet() }
                 if (moved < CLICK_THRESHOLD) {
                     const w = s.pixi.toWorld(event.x, event.y)
                     selectNode(findNodeAt(w.x, w.y))

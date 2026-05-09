@@ -70,7 +70,8 @@ self.onmessage = (e) => {
         case 'addTime': sim && sim.alpha(Math.max(sim.alpha(), 0.05)).restart(); break
         case 'restart': sim && sim.alpha(1).restart(); break
         case 'pause':   sim && sim.stop(); break
-        case 'resume':  sim && sim.alpha(Math.max(sim.alpha(), 0.3)).restart(); break
+        case 'resume':      sim && sim.alpha(Math.max(sim.alpha(), 0.3)).restart(); break
+        case 'resumeQuiet': sim && sim.restart(); break
 
         case 'setPositions': {
             const buf = msg.positions   // Float32Array: [x, y, z] per node

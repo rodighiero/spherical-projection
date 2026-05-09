@@ -35,7 +35,7 @@ export function drawGraticule() {
     geoPath(graticule)
     // Same thickness as the sphere border (1px), lighter alpha so the
     // grid reads as an overlay rather than competing with the network.
-    stage.stroke({ width: 1, color: 0x000000, alpha: 0.18 })
+    stage.stroke({ width: 1, color: 0x000000, alpha: 0.10 })
 }
 
 export function setGraticuleVisible(v) {
