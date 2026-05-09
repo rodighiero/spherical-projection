@@ -93,9 +93,9 @@ function initControls() {
     controls.addEventListener('click', e => {
         const action = e.target.dataset && e.target.dataset.action
         if (!action) return
-        if (action === 'add')     addTime()
-        if (action === 'restart') restart()
-        if (action === 'toggle') {
+        if (action === 'add')          addTime()
+        else if (action === 'restart') restart()
+        else if (action === 'toggle') {
             if (isRunning()) {
                 pause()
                 toggleBtn.textContent = 'Resume'
@@ -106,23 +106,25 @@ function initControls() {
                 toggleBtn.classList.remove('paused')
             }
         }
-        if (action === 'graticule') {
+        else if (action === 'graticule') {
             const next = !isGraticuleVisible()
             setGraticuleVisible(next)
             e.target.classList.toggle('active', next)
             updateConfigDisplay()
         }
-        if (action === 'download-png') downloadPNG()
-        if (action === 'download-svg') downloadSVG()
+        else if (action === 'download-png') downloadPNG()
+        else if (action === 'download-svg') downloadSVG()
     })
 }
 
 // ── Loading progress UI ───────────────────────────────────────────────────────
 
-function setLoadingProgress({ step, label, pct }) {
-    document.getElementById('loading-bar-fill').style.width = `${pct}%`
+const _loadingBarFill = document.getElementById('loading-bar-fill')
+const _loadingSteps   = [...document.querySelectorAll('.loading-step')]
 
-    document.querySelectorAll('.loading-step').forEach(el => {
+function setLoadingProgress({ step, label, pct }) {
+    _loadingBarFill.style.width = `${pct}%`
+    _loadingSteps.forEach(el => {
         const s = parseInt(el.dataset.step)
         el.classList.toggle('done',   s < step)
         el.classList.toggle('active', s === step)

@@ -53,17 +53,10 @@ async function fetchAuthors(topicId, onProgress) {
         'topics', 'last_known_institutions',
     ].join(',')
 
-    while (authors.length < MAX_AUTHORS) {
-        const url = [
-            `${BASE}/authors`,
-            `?filter=topics.id:${topicId}`,
-            `&sort=cited_by_count:desc`,
-            `&per_page=${AUTHORS_PAGE}`,
-            `&cursor=${cursor}`,
-            `&select=${select}`,
-        ].join('')
+    const baseUrl = `${BASE}/authors?filter=topics.id:${topicId}&sort=cited_by_count:desc&per_page=${AUTHORS_PAGE}&select=${select}`
 
-        const data = await get(url)
+    while (authors.length < MAX_AUTHORS) {
+        const data = await get(`${baseUrl}&cursor=${cursor}`)
         if (!data.results?.length) break
         authors.push(...data.results)
 
@@ -114,7 +107,8 @@ async function fetchCoauthorships(topicId, authors, onProgress) {
 
                 for (let i = 0; i < present.length; i++) {
                     for (let j = i + 1; j < present.length; j++) {
-                        const key = [present[i], present[j]].sort().join('§')
+                        const a = present[i], b = present[j]
+                        const key = a < b ? `${a}§${b}` : `${b}§${a}`
                         edgeMap.set(key, (edgeMap.get(key) || 0) + 1)
                     }
                 }
@@ -163,9 +157,7 @@ function buildGraph(authors, edgeMap) {
         institution:    a.last_known_institutions?.[0]?.display_name || null,
     }))
 
-    const links = rawLinks
-
-    return { nodes, links }
+    return { nodes, links: rawLinks }
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -175,7 +167,7 @@ export async function fetchNetwork(topic, onProgress) {
     onProgress({ step: 1, label: `Topic: ${topic.display_name}`, pct: 3 })
 
     const authors = await fetchAuthors(topic.id, onProgress)
-    if (authors.length < 10) throw new Error(`Too few authors found for "${query}".`)
+    if (authors.length < 10) throw new Error(`Too few authors found for "${topic.display_name}".`)
 
     const edgeMap = await fetchCoauthorships(topic.id, authors, onProgress)
 

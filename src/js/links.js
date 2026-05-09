@@ -1,6 +1,7 @@
 import { Graphics } from 'pixi.js'
 import * as d3 from 'd3'
 import { hasSelection, isLinkActive } from './selection'
+import { HIGHLIGHT } from './constants'
 
 // Adapts PIXI.Graphics to the canvas 2D context interface that d3.geoPath
 // expects.
@@ -37,8 +38,6 @@ export function initLinks() {
 export function refreshGeoPath() {
     geoPath = d3.geoPath(s.projection, pixiCtx)
 }
-
-const HIGHLIGHT = 0xd62828
 
 const STYLE_SPHERE = { width: 1,   color: 0x000000, alpha: 0.5  }
 const STYLE_LINK   = { width: 0.5, color: 0x000000, alpha: 0.3  }

@@ -151,10 +151,6 @@ canvas {
 	color: #000;
 }
 
-#config span[hidden] {
-	display: none;
-}
-
 #credit {
 	position: absolute;
 	bottom: 24px;

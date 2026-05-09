@@ -1,5 +1,6 @@
 import { Graphics } from 'pixi.js'
-import { hasSelection, isSelected, isNeighbor, getSelected } from './selection'
+import { hasSelection, isNeighbor, getSelected } from './selection'
+import { HIGHLIGHT } from './constants'
 
 let stage
 
@@ -7,8 +8,6 @@ export function initNodes() {
     const graphics = new Graphics()
     stage = s.pixi.addChild(graphics)
 }
-
-const HIGHLIGHT = 0xd62828
 
 export function drawNodes() {
     stage.clear()

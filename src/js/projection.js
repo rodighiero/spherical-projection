@@ -69,16 +69,9 @@ export function setRotation(r) { currentRotation = r.slice() }
 
 // ── Projection builder ────────────────────────────────────────────────────────
 
-function elementBottom(id, fallback) {
+function elementEdge(id, edge, fallback) {
     const el = document.getElementById(id)
-    if (!el) return fallback
-    return el.getBoundingClientRect().bottom
-}
-
-function elementTop(id, fallback) {
-    const el = document.getElementById(id)
-    if (!el) return fallback
-    return el.getBoundingClientRect().top
+    return el ? el.getBoundingClientRect()[edge] : fallback
 }
 
 export function buildProjection(name) {
@@ -87,8 +80,8 @@ export function buildProjection(name) {
 
     const W      = window.innerWidth
     const H      = window.innerHeight
-    const top    = elementBottom('projection-menu', 200) + MARGIN_GAP
-    const bottom = elementTop('controls', H - 100)      - MARGIN_GAP
+    const top    = elementEdge('projection-menu', 'bottom', 200) + MARGIN_GAP
+    const bottom = elementEdge('controls', 'top', H - 100)       - MARGIN_GAP
 
     return factory().fitExtent(
         [[MARGIN_X, top], [W - MARGIN_X, bottom]],
