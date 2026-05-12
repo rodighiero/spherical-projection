@@ -27,11 +27,11 @@ npm install
 npm start
 ```
 
-The dev server lives at `http://localhost:8080`. `npm run build` writes the production bundle into `docs/`, ready to be served as a static site (the repo's GitHub Pages publishes from there).
+The dev server lives at `http://localhost:5173`. `npm run build` writes the production bundle into `docs/`, ready to be served as a static site (the repo's GitHub Pages publishes from there).
 
 ## Data
 
-The visualization reads `src/data/nodes.json` and `src/data/links.json`. Replace these with your own — any list of nodes with stable `id`s, and any list of links of the form `{ source, target, value }` — and the rest follows. The default dataset is the lexical network of authors at the Digital Humanities Conference 2019, the case study from the paper.
+Type any research topic into the search bar — the app queries the [OpenAlex API](https://api.openalex.org) live, fetches the top 1 000 most-cited authors in that field, and builds a co-authorship graph from their shared works. Results are cached in the browser for one week so repeat queries are instant.
 
 ## Cite
 
