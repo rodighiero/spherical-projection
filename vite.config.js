@@ -2,6 +2,13 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   root: 'src',
+  worker: {
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/[name].js',
+      },
+    },
+  },
   build: {
     outDir: '../docs',
     emptyOutDir: false,
