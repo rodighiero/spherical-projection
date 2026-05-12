@@ -3,7 +3,7 @@
 // match the on-screen state, including selection highlights.
 
 import * as d3 from 'd3'
-import { isGraticuleVisible } from './graticule'
+import { isGraticuleVisible } from '../render/graticule'
 import {
     hasSelection, isLinkActive, isNeighbor, getSelected,
 } from './selection'

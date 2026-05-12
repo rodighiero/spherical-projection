@@ -1,6 +1,6 @@
 import { Graphics } from 'pixi.js'
 import * as d3 from 'd3'
-import { hasSelection, isLinkActive } from './selection'
+import { hasSelection, isLinkActive } from '../core/selection'
 
 const HIGHLIGHT = 0xd62828
 

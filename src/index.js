@@ -10,20 +10,20 @@ import versor from 'versor'
 
 // Init
 
-import initPixi from './js/pixi.js'
-import { initLinks, refreshGeoPath, drawLinks } from './js/links.js'
-import { initNodes, drawNodes } from './js/nodes.js'
+import initPixi from './render/pixi.js'
+import { initLinks, refreshGeoPath, drawLinks } from './render/links.js'
+import { initNodes, drawNodes } from './render/nodes.js'
 import {
     initGraticule, refreshGraticulePath, drawGraticule,
     setGraticuleVisible, isGraticuleVisible,
-} from './js/graticule.js'
-import background from './js/background'
-import { simulation, resetSimulation, addTime, restart, pause, resume, resumeQuiet, isRunning, syncPositions } from './js/simulation'
-import { PROJECTIONS, buildProjection } from './js/projection.js'
-import { setSelected, findNodeAt } from './js/selection.js'
-import { setInfoContent, updateInfoPosition } from './js/info.js'
-import { downloadPNG, downloadSVG } from './js/download.js'
-import { fetchNetwork, searchTopics } from './js/fetcher.js'
+} from './render/graticule.js'
+import background from './render/background'
+import { simulation, resetSimulation, addTime, restart, pause, resume, resumeQuiet, isRunning, syncPositions } from './core/simulation'
+import { PROJECTIONS, buildProjection } from './core/projection.js'
+import { setSelected, findNodeAt } from './core/selection.js'
+import { setInfoContent, updateInfoPosition } from './core/info.js'
+import { downloadPNG, downloadSVG } from './core/download.js'
+import { fetchNetwork, searchTopics } from './core/fetcher.js'
 
 // Global state
 

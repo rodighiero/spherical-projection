@@ -2,9 +2,9 @@
 // runs in simulation.worker.js — here we just pump positions back
 // into s.nodes and trigger a redraw on each tick.
 
-import { drawLinks } from './links'
-import { drawNodes } from './nodes'
-import { drawGraticule } from './graticule'
+import { drawLinks } from '../render/links'
+import { drawNodes } from '../render/nodes'
+import { drawGraticule } from '../render/graticule'
 import { updateInfoPosition } from './info'
 
 let worker = null
