@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```sh
-npm start          # dev server at http://localhost:8080 (webpack-dev-server, hot reload)
+npm start          # dev server at http://localhost:5173 (Vite, hot reload)
 npm run build      # production bundle → docs/ (served as GitHub Pages)
 ```
 
@@ -13,7 +13,7 @@ No test suite or linter is configured.
 
 ## Architecture
 
-The app is a single-page WebGL visualization. The entry point is `src/index.js`, which owns global state and wires all modules together. There are no frameworks — just vanilla JS modules bundled by webpack + Babel.
+The app is a single-page WebGL visualization. The entry point is `src/index.js`, which owns global state and wires all modules together. There are no frameworks — just vanilla JS modules bundled by Vite.
 
 ### Global state (`window.s`)
 
@@ -59,4 +59,4 @@ Results are cached in `localStorage` for one week (`src/js/cache.js`, key prefix
 
 ### Build output
 
-Webpack writes everything to `docs/` (the GitHub Pages source). `splitChunks` and `runtimeChunk` are disabled, and `LimitChunkCountPlugin(maxChunks: 1)` forces a single `main.js` — this works around PixiJS v8 dynamic imports that would otherwise produce extra numbered chunks.
+Vite writes everything to `docs/` (the GitHub Pages source). `inlineDynamicImports: true` in `vite.config.js` forces a single `main.js` — this works around PixiJS v8 dynamic imports that would otherwise produce extra numbered chunks. The worker is emitted as a separate file in `docs/assets/`; its URL is rewritten automatically at build time.

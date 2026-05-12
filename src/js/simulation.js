@@ -14,7 +14,8 @@ function spawnWorker() {
     if (worker) worker.terminate()
 
     worker = new Worker(
-        new URL('./simulation.worker.js', import.meta.url)
+        new URL('./simulation.worker.js', import.meta.url),
+        { type: 'module' }
     )
 
     worker.onmessage = (e) => {
