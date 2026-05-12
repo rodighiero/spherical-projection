@@ -5,7 +5,7 @@ export default defineConfig({
   worker: {
     rollupOptions: {
       output: {
-        entryFileNames: 'assets/[name].js',
+        entryFileNames: '[name].js',
       },
     },
   },
