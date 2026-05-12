@@ -1,6 +1,7 @@
 import { Graphics } from 'pixi.js'
 import { hasSelection, isNeighbor, getSelected } from './selection'
-import { HIGHLIGHT } from './constants'
+
+const HIGHLIGHT = 0xd62828
 
 let stage
 

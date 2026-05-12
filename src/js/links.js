@@ -1,7 +1,8 @@
 import { Graphics } from 'pixi.js'
 import * as d3 from 'd3'
 import { hasSelection, isLinkActive } from './selection'
-import { HIGHLIGHT } from './constants'
+
+const HIGHLIGHT = 0xd62828
 
 // Adapts PIXI.Graphics to the canvas 2D context interface that d3.geoPath
 // expects.
