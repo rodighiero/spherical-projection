@@ -38,7 +38,3 @@ Type any research topic into the search bar — the app queries the [OpenAlex AP
 > Rodighiero, D. (2020). _Drawing Network Visualizations on a Continuous, Spherical Surface._ In 2020 24th International Conference Information Visualisation (IV), pp. 573–580. IEEE. https://doi.org/10.1109/IV51561.2020.00097
 
 Open-access PDF, courtesy of the University of Groningen: https://pure.rug.nl/ws/files/224968970/Rodighiero_2020_Drawing_Network_Visualizations_on_a_Continuous_Sp.pdf
-
-## License
-
-MIT.
