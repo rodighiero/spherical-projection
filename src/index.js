@@ -41,6 +41,40 @@ let networkActive = false   // true once a network has been loaded
 
 let activeProjection = 'Mercator'
 
+// Matches the button min-width / column-gap the CSS grid is built against —
+// keep in sync with #projection-menu button / column-gap in index.css.
+const MENU_ITEM_WIDTH = 95
+const MENU_GAP        = 18
+const MENU_MIN_MARGIN = 24   // smallest the lateral margins are allowed to shrink to
+
+// CSS multi-column's own `column-fill: balance` produced lopsided columns
+// (some 10 items deep, others 7) because the browser balances by estimated
+// height rather than item count. Driving the grid explicitly — one row
+// count for every column, computed from how many columns actually fit —
+// guarantees every column but the last holds exactly the same number of
+// entries, and re-deriving it on demand keeps it correct as columns
+// added/removed with the window width.
+//
+// Columns are sized to their natural width (not stretched with `1fr`) and
+// the menu is then centered via CSS transform, so leftover width becomes
+// equal left/right margins instead of dead space stuck on one side.
+function layoutProjectionMenu() {
+    const menu  = document.getElementById('projection-menu')
+    const count = menu.children.length
+    if (!count) return
+    const available  = window.innerWidth - 2 * MENU_MIN_MARGIN
+    const maxColumns = Math.max(1, Math.floor((available + MENU_GAP) / (MENU_ITEM_WIDTH + MENU_GAP)))
+    const rows       = Math.ceil(count / maxColumns)
+    // maxColumns is how many columns *fit* — shrink back down to how many
+    // are actually *needed* to hold `count` items at that row count, or a
+    // wide-enough window reserves a trailing column no button ever lands in.
+    const columns    = Math.ceil(count / rows)
+    const width      = columns * MENU_ITEM_WIDTH + (columns - 1) * MENU_GAP
+    menu.style.width               = `${width}px`
+    menu.style.gridTemplateColumns = `repeat(${columns}, ${MENU_ITEM_WIDTH}px)`
+    menu.style.gridTemplateRows    = `repeat(${rows}, auto)`
+}
+
 function selectProjection(name) {
     if (name === activeProjection) return
     if (!PROJECTIONS[name]) return
@@ -68,6 +102,7 @@ function initProjectionPanel() {
         button.addEventListener('click', () => selectProjection(name))
         menu.appendChild(button)
     })
+    layoutProjectionMenu()
 }
 
 // ── Config display ────────────────────────────────────────────────────────────
@@ -345,6 +380,7 @@ function initSearch() {
 
 function relayout() {
     background()
+    layoutProjectionMenu()
     s.projection = buildProjection(activeProjection)
     refreshGeoPath()
     refreshGraticulePath()

@@ -22,11 +22,11 @@ canvas {
 #projection-menu {
 	position: absolute;
 	top: 30px;
-	left: 60px;
-	right: 60px;
-	column-width: 95px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: grid;
+	grid-auto-flow: column;
 	column-gap: 18px;
-	column-fill: balance;
 	font-size: 7px;
 	line-height: 1.8;
 	letter-spacing: 0.04em;
@@ -52,7 +52,6 @@ canvas {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	pointer-events: auto;
-	break-inside: avoid;
 }
 
 #projection-menu button::before {
