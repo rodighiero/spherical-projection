@@ -13,8 +13,10 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../docs',
-    emptyOutDir: false,
+    // Throwaway build directory — CI builds and publishes it, so it is
+    // gitignored rather than committed.
+    outDir: '../dist',
+    emptyOutDir: true,
     rolldownOptions: {
       output: {
         codeSplitting: false,

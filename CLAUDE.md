@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```sh
 npm start          # dev server at http://localhost:5173 (Vite, hot reload)
-npm run build      # production bundle → docs/ (served as GitHub Pages)
+npm run build      # production bundle → dist/ (gitignored; CI publishes it)
 ```
 
 No test suite or linter is configured.
@@ -61,7 +61,7 @@ Results are cached in `localStorage` for one week (`src/core/cache.js`, key pref
 
 ### Build output
 
-Vite writes everything to `docs/` (the GitHub Pages source). `codeSplitting: false` in `vite.config.js` forces a single `main.js` — this works around PixiJS v8 dynamic imports that would otherwise produce extra numbered chunks. The worker is emitted as `docs/simulation.worker.js`; its URL is rewritten automatically at build time.
+Vite writes everything to `dist/`, which is gitignored — `.github/workflows/deploy.yml` builds it on every push to `main` and publishes it to GitHub Pages, so no build output is committed. `codeSplitting: false` in `vite.config.js` forces a single `main.js` — this works around PixiJS v8 dynamic imports that would otherwise produce extra numbered chunks. The worker is emitted as `dist/simulation.worker.js`; its URL is rewritten automatically at build time.
 
 Vite 8 bundles with Rolldown rather than Rollup, so the config uses `build.rolldownOptions` / `worker.rolldownOptions`. `package.json` sets `"type": "module"` so `vite.config.js` is loaded as ESM.
 

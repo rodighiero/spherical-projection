@@ -2,13 +2,10 @@
   "name": "spherical-projection",
   "version": "1.0.0",
   "type": "module",
-  "description": "A network laid out on a sphere with d3-force-3d, then unfolded onto the plane through a dozen geographic projections — Mercator, Orthographic, Equal Earth — rendered live with PIXI.js.",
+  "description": "A network laid out on a sphere with d3-force-3d, then unfolded onto the plane through a dozen geographic projections \u2014 Mercator, Orthographic, Equal Earth \u2014 rendered live with PIXI.js.",
   "scripts": {
     "start": "vite",
     "build": "vite build"
-  },
-  "directories": {
-    "doc": "docs"
   },
   "repository": {
     "type": "git",

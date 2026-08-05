@@ -31,7 +31,7 @@ npm install
 npm start
 ```
 
-The dev server lives at [`http://localhost:5173`](http://localhost:5173). `npm run build` writes the production bundle into `docs/`, ready to be served as a static site (the repo's GitHub Pages publishes from there). Asset paths are relative, so the same build runs unchanged at a domain root or under a subpath like `/spherical-projection/`.
+The dev server lives at [`http://localhost:5173`](http://localhost:5173). `npm run build` writes the production bundle into `dist/`. You rarely need to run it by hand: a GitHub Actions workflow builds and publishes to GitHub Pages on every push to `main`, so the repository holds only source. Asset paths are relative, so the same build runs unchanged at a domain root or under a subpath like `/spherical-projection/`.
 
 ## Data
 
