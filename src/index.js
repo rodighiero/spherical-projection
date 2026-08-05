@@ -288,6 +288,9 @@ function initSearch() {
     function go() {
         if (_liveTopics.length) runQuery(_liveTopics[0])
     }
+    // mousedown would blur the input and clear _liveTopics before the
+    // click lands, so suppress it — same trick as the list items above.
+    submit.addEventListener('mousedown', e => e.preventDefault())
     submit.addEventListener('click', go)
     input.addEventListener('keydown', e => { if (e.key === 'Enter') go() })
 
