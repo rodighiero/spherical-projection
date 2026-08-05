@@ -42,14 +42,15 @@ After a drag-to-rotate, `syncPositions()` converts `node.spherical` back to Cart
 ### Rendering (PixiJS v8 + d3-geo)
 
 - `src/render/pixi.js` — initialises a PixiJS `Application` (WebGL, 2× resolution, `preserveDrawingBuffer` for PNG export) and a `pixi-viewport` Viewport. Drag is intentionally disabled on the viewport — sphere rotation hijacks it.
-- `src/render/links.js` — draws links as great-circle geodesics. A `PixiGeoContext` adapter makes a PIXI `Graphics` object look like a Canvas 2D context so `d3.geoPath` can write into it. `beginPath()` flushes the previous path immediately to avoid PIXI v8's 65 535-vertex hard cap per batch.
+- `src/render/geoContext.js` — `PixiGeoContext`, shared by `links.js` and `graticule.js`: makes a PIXI `Graphics` object look like a Canvas 2D context so `d3.geoPath` can write into it. d3.geoPath does not call `beginPath()` between top-level geometries, so it tracks the accumulated point count itself and flushes (`stroke()`) whenever a new subpath is about to start with the running total past its threshold — keeping every draw within PIXI v8's ~65 535-vertex hard cap regardless of network size, without ever splitting a single link's arc mid-curve.
+- `src/render/links.js` — draws links as great-circle geodesics through `PixiGeoContext`.
 - `src/render/nodes.js` — draws nodes as small circles via PIXI `Graphics`. Selected node gets a larger dot + ring; its neighbors get a medium dot; both in `HIGHLIGHT` red (`0xd62828`).
 - `src/render/graticule.js` — draws the geographic grid using the same `d3.geoPath` + PixiGeoContext approach.
 - `src/render/background.js` — fills the separate `canvas#background` (a plain 2D canvas sitting behind the PixiJS one) with solid white.
 
 ### Projections
 
-`src/core/projection.js` **auto-discovers** every `geo*` function in `d3` and `d3-geo-projection` at startup by probing for `fitExtent()` and `scale()`. The resulting ~90 projections are sorted alphabetically into the `PROJECTIONS` map. `buildProjection(name)` fits the chosen projection to the window with a UI-aware margin (clearing the projection menu at top and the controls panel at bottom).
+`src/core/projection.js` **auto-discovers** every `geo*` function in `d3` and `d3-geo-projection` at startup by probing for `fitExtent()` and `scale()`. The resulting ~90 projections are sorted alphabetically into the `PROJECTIONS` map. `buildProjection(name)` fits the chosen projection to the window with a UI-aware margin (clearing the projection menu at top and the controls panel at bottom), and coarsens `.precision()` to 2px — d3.geoPath's default resamples great-circle links far finer than their 0.2–0.6px stroke width can show, and the coarser threshold measurably cuts the vertex count `links.js` has to push through PIXI every frame.
 
 ### Data / API
 

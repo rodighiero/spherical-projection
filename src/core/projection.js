@@ -78,7 +78,17 @@ export function buildProjection(name) {
 
     const extent = [[MARGIN_X, top], [W - MARGIN_X, bottom]]
 
-    return factory()
+    const projection = factory()
         .fitExtent(extent, { type: 'Sphere' })
         .clipExtent(extent)
+
+    // d3.geoPath resamples every great-circle link into a polyline whose
+    // deviation from the true arc stays under this threshold (in projected
+    // pixels) — the default (~0.71px) is fine detail wasted on links drawn
+    // at 0.2–0.6px width. Coarsening it directly cuts the vertex count
+    // draw calls are built from, with no visible effect at this line
+    // weight. Not every discovered projection factory exposes it.
+    if (typeof projection.precision === 'function') projection.precision(2)
+
+    return projection
 }

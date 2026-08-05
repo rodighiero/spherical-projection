@@ -1,31 +1,9 @@
 import { Graphics } from 'pixi.js'
 import * as d3 from 'd3'
 import { hasSelection, isLinkActive } from '../core/selection'
+import { PixiGeoContext } from './geoContext'
 
 const HIGHLIGHT = 0xd62828
-
-// Adapts PIXI.Graphics to the canvas 2D context interface that d3.geoPath
-// expects.
-//
-// IMPORTANT: d3.geoPath calls beginPath() before each feature, so we use
-// that hook to immediately commit the previous path with stroke(). This
-// keeps each link's geometry in its own PIXI batch and avoids the 65 535-
-// vertex hard cap that silently truncates large accumulated paths in PIXI v8.
-// The style and graphics object are set per draw pass via setStyle().
-class PixiGeoContext {
-    constructor() { this.g = null; this._style = null; this._pending = false }
-    setStyle(graphics, style) { this.g = graphics; this._style = style; this._pending = false }
-    beginPath() {
-        if (this._pending) { this.g.stroke(this._style); this._pending = false }
-    }
-    moveTo(x, y) { this.g.moveTo(x, y); this._pending = true }
-    lineTo(x, y) { this.g.lineTo(x, y) }
-    arc(x, y, r, a0, a1, ccw) { this.g.arc(x, y, r, a0, a1, ccw) }
-    closePath() { this.g.closePath() }
-    flush() { if (this._pending) { this.g.stroke(this._style); this._pending = false } }
-    stroke() { }
-    fill() { }
-}
 
 let stage, pixiCtx, geoPath
 
@@ -55,8 +33,9 @@ export function drawLinks() {
     geoPath({ type: 'Sphere' })
     pixiCtx.flush()
 
-    // All links. Each path is committed via beginPath() before the next
-    // one starts, keeping every link within PIXI's 65 535-vertex batch cap.
+    // All links — PixiGeoContext flushes internally as the point count
+    // grows, keeping this within PIXI's vertex batch cap regardless of
+    // network size.
     pixiCtx.setStyle(stage, STYLE_LINK)
     s.links.forEach(link => {
         const a = link.source && link.source.spherical
