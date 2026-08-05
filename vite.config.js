@@ -4,7 +4,7 @@ export default defineConfig({
   root: 'src',
   base: '/spherical-projection/',
   worker: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         entryFileNames: '[name].js',
       },
@@ -13,9 +13,9 @@ export default defineConfig({
   build: {
     outDir: '../docs',
     emptyOutDir: false,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        inlineDynamicImports: true,
+        codeSplitting: false,
         entryFileNames: 'main.js',
         assetFileNames: (info) => info.name?.endsWith('.css') ? 'main.css' : '[name][extname]',
       },

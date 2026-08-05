@@ -59,4 +59,6 @@ Results are cached in `localStorage` for one week (`src/js/cache.js`, key prefix
 
 ### Build output
 
-Vite writes everything to `docs/` (the GitHub Pages source). `inlineDynamicImports: true` in `vite.config.js` forces a single `main.js` — this works around PixiJS v8 dynamic imports that would otherwise produce extra numbered chunks. The worker is emitted as a separate file in `docs/assets/`; its URL is rewritten automatically at build time.
+Vite writes everything to `docs/` (the GitHub Pages source). `codeSplitting: false` in `vite.config.js` forces a single `main.js` — this works around PixiJS v8 dynamic imports that would otherwise produce extra numbered chunks. The worker is emitted as `docs/simulation.worker.js`; its URL is rewritten automatically at build time.
+
+Vite 8 bundles with Rolldown rather than Rollup, so the config uses `build.rolldownOptions` / `worker.rolldownOptions`. `package.json` sets `"type": "module"` so `vite.config.js` is loaded as ESM.

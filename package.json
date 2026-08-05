@@ -1,6 +1,7 @@
 {
   "name": "spherical-projection",
   "version": "1.0.0",
+  "type": "module",
   "description": "A network laid out on a sphere with d3-force-3d, then unfolded onto the plane through a dozen geographic projections — Mercator, Orthographic, Equal Earth — rendered live with PIXI.js.",
   "scripts": {
     "start": "vite",
@@ -16,7 +17,7 @@
   "author": "Dario Rodighiero",
   "license": "MIT",
   "devDependencies": {
-    "vite": "^6"
+    "vite": "^8.2.0"
   },
   "dependencies": {
     "d3": "^7.9.0",
@@ -24,7 +25,7 @@
     "d3-geo-projection": "^4.0.0",
     "normalize.css": "^8.0.1",
     "pixi-viewport": "^6.0.3",
-    "pixi.js": "^8.18.1",
+    "pixi.js": "^8.19.0",
     "versor": "^0.2.0"
   }
 }
