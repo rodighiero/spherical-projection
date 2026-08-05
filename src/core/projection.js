@@ -57,15 +57,12 @@ export const PROJECTIONS = discoverProjections()
 
 // ── Margins ───────────────────────────────────────────────────────────────────
 
-export const MARGIN_X   = 60
-export const MARGIN_GAP = 30
+// The map is centered in the window; MARGIN_PERCENT sets its minimum
+// breathing room on every side, as a share of whichever screen dimension is
+// smaller — the axis the map would reach the edge of first.
+export const MARGIN_PERCENT = 0.05
 
 // ── Projection builder ────────────────────────────────────────────────────────
-
-function elementEdge(id, edge, fallback) {
-    const el = document.getElementById(id)
-    return el ? el.getBoundingClientRect()[edge] : fallback
-}
 
 export function buildProjection(name) {
     const factory = PROJECTIONS[name]
@@ -73,10 +70,9 @@ export function buildProjection(name) {
 
     const W      = window.innerWidth
     const H      = window.innerHeight
-    const top    = elementEdge('projection-menu', 'bottom', 200) + MARGIN_GAP
-    const bottom = elementEdge('controls', 'top', H - 100)       - MARGIN_GAP
+    const margin = MARGIN_PERCENT * Math.min(W, H)
 
-    const extent = [[MARGIN_X, top], [W - MARGIN_X, bottom]]
+    const extent = [[margin, margin], [W - margin, H - margin]]
 
     const projection = factory()
         .fitExtent(extent, { type: 'Sphere' })
