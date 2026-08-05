@@ -23,7 +23,6 @@
 
 import { drawLinks } from '../render/links'
 import { drawNodes } from '../render/nodes'
-import { drawGraticule } from '../render/graticule'
 import { updateInfoPosition } from './info'
 
 const halfPi = Math.PI / 2
@@ -67,9 +66,11 @@ function frame(now) {
         ]
     }
 
+    // The graticule depends only on the projection, never on node
+    // positions, so it isn't redrawn here — callers that actually change
+    // the projection (or toggle it visible) redraw it explicitly.
     drawLinks()
     drawNodes()
-    drawGraticule()
     updateInfoPosition()
 
     // Still catching up to the latest known tick — keep animating toward

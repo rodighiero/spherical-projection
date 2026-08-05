@@ -35,7 +35,7 @@ The force-directed layout runs entirely in a Web Worker (`src/core/simulation.wo
 3. Custom `centroidForce` counteracts hemispheric drift from link forces.
 4. Nodes start on a Fibonacci sphere for uniform seeding (`αDecay = 0.007` → slow ~20s cool-down).
 5. On every tick, positions are packed into a `Float32Array` (5 floats/node: x, y, z, lon, lat) and **transferred** (zero-copy) back to the main thread via `postMessage`.
-6. Main thread (`src/core/simulation.js`) unpacks positions into `s.nodes` and calls `drawLinks()` / `drawNodes()` / `drawGraticule()`.
+6. The worker's tick timer runs on `setTimeout` (workers have no `requestAnimationFrame`) and, measured in practice, updates at roughly half the display's real refresh rate. Rather than draw on message arrival, `src/core/simulation.js` keeps the last two received ticks and interpolates node positions between them on every `requestAnimationFrame` callback, then calls `drawLinks()` / `drawNodes()` — so the sphere animates at the display's full rate regardless of the worker's slower, unsynced tick cadence. `drawGraticule()` is not part of this loop — see Rendering below.
 
 After a drag-to-rotate, `syncPositions()` converts `node.spherical` back to Cartesian and sends a `setPositions` message so the worker resumes from the rotated state.
 
@@ -45,7 +45,7 @@ After a drag-to-rotate, `syncPositions()` converts `node.spherical` back to Cart
 - `src/render/geoContext.js` — `PixiGeoContext`, shared by `links.js` and `graticule.js`: makes a PIXI `Graphics` object look like a Canvas 2D context so `d3.geoPath` can write into it. d3.geoPath does not call `beginPath()` between top-level geometries, so it tracks the accumulated point count itself and flushes (`stroke()`) whenever a new subpath is about to start with the running total past its threshold — keeping every draw within PIXI v8's ~65 535-vertex hard cap regardless of network size, without ever splitting a single link's arc mid-curve.
 - `src/render/links.js` — draws links as great-circle geodesics through `PixiGeoContext`.
 - `src/render/nodes.js` — draws nodes as small circles via PIXI `Graphics`. Selected node gets a larger dot + ring; its neighbors get a medium dot; both in `HIGHLIGHT` red (`0xd62828`).
-- `src/render/graticule.js` — draws the geographic grid using the same `d3.geoPath` + PixiGeoContext approach.
+- `src/render/graticule.js` — draws the geographic grid using the same `d3.geoPath` + PixiGeoContext approach. Deliberately outside the per-tick animation loop: the grid depends only on the projection, never on node positions, so `drawGraticule()` is called explicitly wherever the projection changes or visibility toggles (`selectProjection()`, `relayout()`, `setGraticuleVisible()`, `loadNetwork()`) rather than every frame — measured at ~0.75ms/call, that would otherwise cost ~4.5% of the 16.6ms/60fps frame budget for a grid that never changes between ticks.
 - `src/render/background.js` — fills the separate `canvas#background` (a plain 2D canvas sitting behind the PixiJS one) with solid white.
 
 ### Projections

@@ -213,6 +213,12 @@ function loadNetwork(nodes, links) {
         target: byId.get(l.target) || l.target,
     }))
 
+    // drawGraticule() gates on s.nodes.length, so it stays hidden until a
+    // network is actually loaded even if already toggled on — redraw it
+    // explicitly now that the count just changed, since the per-frame
+    // simulation loop no longer redraws the (position-independent) grid.
+    drawGraticule()
+
     if (networkActive) {
         resetSimulation()
     } else {
