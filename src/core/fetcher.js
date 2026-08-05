@@ -9,7 +9,7 @@
 // IDs are OpenAlex URL strings ("https://openalex.org/A…"). The simulation
 // worker and selection code both key on node.id, so string IDs work as-is.
 
-import { getCached, setCached } from './cache'
+import { getCached, setCached, getCachedSearch, setCachedSearch } from './cache'
 
 const BASE          = 'https://api.openalex.org'
 const MAX_AUTHORS   = 1000
@@ -17,14 +17,88 @@ const AUTHORS_PAGE  = 200
 const WORKS_BATCH   = 25   // author IDs per works request
 const CONCURRENCY   = 10   // parallel works requests
 
+const MAX_ATTEMPTS    = 5
+const BACKOFF_BASE_MS = 600
+const BACKOFF_CAP_MS  = 10000
+
+// OpenAlex 429s for two very different reasons, and Retry-After tells them
+// apart. A short value means a burst limit worth waiting out; a long one
+// means the daily credit quota is spent (it sends the full hours-long reset),
+// and no amount of retrying inside one page load will help.
+const WAITABLE_MS = 60000
+
+// No `mailto` is sent, so these requests run on OpenAlex's shared pool
+// rather than the polite one — which makes rate limiting likelier, and
+// the retry below load-bearing rather than decorative.
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+
+const retryAfterMs = header => {
+    const secs = Number(header)
+    return Number.isFinite(secs) && secs > 0 ? secs * 1000 : null
+}
+
+// How long to wait before attempt n+1. Honour Retry-After when the server
+// sends one, otherwise exponential backoff with full jitter — with up to
+// CONCURRENCY requests in flight, jitter keeps them from retrying in
+// lockstep and re-triggering the same limit.
+function backoffMs(attempt, header) {
+    return retryAfterMs(header)
+        ?? Math.random() * Math.min(BACKOFF_BASE_MS * 2 ** (attempt - 1), BACKOFF_CAP_MS)
+}
+
+function quotaError(waitMs) {
+    const hours = Math.round(waitMs / 3600000)
+    const when  = hours >= 1 ? `about ${hours} hour${hours === 1 ? '' : 's'}`
+                             : `about ${Math.max(1, Math.round(waitMs / 60000))} minutes`
+    return new Error(`OpenAlex daily request quota is used up. It resets in ${when}.`)
+}
+
 async function get(url) {
-    const sep  = url.includes('?') ? '&' : '?'
-    const full = `${url}${sep}mailto=spherical-projection`
-    const res  = await fetch(full)
-    if (!res.ok) throw new Error(`OpenAlex ${res.status}: ${url}`)
-    return res.json()
+    let lastError, lastStatus
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        let res
+        try {
+            res = await fetch(url)
+        } catch (err) {
+            // Network-level failure — offline, DNS, dropped connection.
+            lastError = err
+            if (attempt < MAX_ATTEMPTS) { await sleep(backoffMs(attempt)); continue }
+            break
+        }
+
+        if (res.ok) return res.json()
+
+        // 429 is rate limiting and 5xx is transient server trouble; both are
+        // worth another go. Any other status (400 on a malformed filter, 404)
+        // will fail identically however often we ask.
+        if (res.status !== 429 && res.status < 500) {
+            throw new Error(`OpenAlex ${res.status}: ${url}`)
+        }
+
+        const header = res.headers.get('retry-after')
+
+        // Quota exhausted rather than throttled — bail out now instead of
+        // burning MAX_ATTEMPTS waits on something that resets in hours.
+        const wait = retryAfterMs(header)
+        if (res.status === 429 && wait !== null && wait > WAITABLE_MS) {
+            throw quotaError(wait)
+        }
+
+        lastError  = new Error(`OpenAlex ${res.status}: ${url}`)
+        lastStatus = res.status
+        if (attempt < MAX_ATTEMPTS) await sleep(backoffMs(attempt, header))
+    }
+
+    // Out of attempts. Rate limiting is the one case a user can act on,
+    // so say so plainly instead of surfacing a bare status code.
+    if (lastStatus === 429) {
+        throw new Error('OpenAlex is rate-limiting this browser. Wait a minute and try again.')
+    }
+    throw lastError
 }
 
 function shortId(url) {
@@ -35,14 +109,22 @@ function shortId(url) {
 // ── Step 1 — search topics ────────────────────────────────────────────────────
 
 export async function searchTopics(query) {
+    const cached = getCachedSearch(query)
+    if (cached) return cached
+
     const data = await get(`${BASE}/topics?search=${encodeURIComponent(query)}&per_page=8&select=id,display_name,subfield,works_count`)
-    if (!data.results?.length) throw new Error(`No topics found for "${query}".`)
-    return data.results.map(t => ({
+    // Zero matches is a normal outcome while the user is mid-word (e.g.
+    // "vir" before "virology" resolves), not a failure — surfacing it as
+    // an error would flash a red message on every partial keystroke. Cache
+    // it like any other result so repeat prefixes don't need a live call.
+    const topics = (data.results || []).map(t => ({
         id:           shortId(t.id),
         display_name: t.display_name,
         subfield:     t.subfield?.display_name || null,
         works_count:  t.works_count || 0,
     }))
+    setCachedSearch(query, topics)
+    return topics
 }
 
 // ── Step 2 — fetch top authors ────────────────────────────────────────────────

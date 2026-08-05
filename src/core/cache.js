@@ -1,14 +1,21 @@
-// Persistent topic-network cache backed by localStorage.
-// Key: topic short-ID.  Value: { ts, nodes, links }.
-// Data expires after TTL_MS so stale networks are refreshed automatically.
+// Persistent localStorage cache for two things fetched from OpenAlex:
+//   sp:<topicId>   — the built network, { ts, nodes, links }
+//   sp:q:<query>   — topic autocomplete results, { ts, topics }
+// Both expire after TTL_MS so stale data is refreshed automatically.
+//
+// The search cache matters as much as the network cache: fetchNetwork()
+// only ever runs after a topic has been resolved via searchTopics(), so a
+// cached network is unreachable if that lookup itself isn't cached too —
+// every visit would need one live request just to find the cached data.
 //
 // One 1 000-author network serialises to roughly 1 MB and localStorage
 // gives us about 5 MB, so the cache fills after a handful of topics.
-// setCached therefore evicts on quota failure — expired entries first,
+// setItem therefore evicts on quota failure — expired entries first,
 // then oldest-fetched — instead of silently giving up.
 
-const PREFIX = 'sp:'
-const TTL_MS = 7 * 24 * 60 * 60 * 1000  // 1 week
+const PREFIX     = 'sp:'
+const SEARCH_KEY = query => PREFIX + 'q:' + query.trim().toLowerCase()
+const TTL_MS     = 7 * 24 * 60 * 60 * 1000  // 1 week
 
 // Every cache entry as { key, ts }, oldest first. Entries we can't parse
 // get ts = 0 so they sort to the front and are evicted first.
@@ -31,27 +38,25 @@ function pruneExpired() {
     }
 }
 
-export function getCached(topicId) {
+function getItem(key) {
     try {
-        const raw = localStorage.getItem(PREFIX + topicId)
+        const raw = localStorage.getItem(key)
         if (!raw) return null
-        const { ts, nodes, links } = JSON.parse(raw)
+        const { ts, ...rest } = JSON.parse(raw)
         if (Date.now() - ts > TTL_MS) {
-            localStorage.removeItem(PREFIX + topicId)
+            localStorage.removeItem(key)
             return null
         }
-        return { nodes, links }
+        return rest
     } catch (_) {
         return null
     }
 }
 
-export function setCached(topicId, nodes, links) {
-    const key = PREFIX + topicId
-
+function setItem(key, rest) {
     let payload
     try {
-        payload = JSON.stringify({ ts: Date.now(), nodes, links })
+        payload = JSON.stringify({ ts: Date.now(), ...rest })
     } catch (_) {
         return   // not serialisable — nothing to cache
     }
@@ -73,6 +78,26 @@ export function setCached(topicId, nodes, links) {
         if (write()) return
     }
 
-    // Nothing left to evict: this network alone exceeds the quota.
-    // Leave the cache empty and let the next query re-fetch.
+    // Nothing left to evict: this entry alone exceeds the quota.
+    // Leave the cache empty and let the next call re-fetch.
+}
+
+// ── Networks, keyed by topic ID ─────────────────────────────────────────────
+
+export function getCached(topicId) {
+    return getItem(PREFIX + topicId)
+}
+
+export function setCached(topicId, nodes, links) {
+    setItem(PREFIX + topicId, { nodes, links })
+}
+
+// ── Topic autocomplete, keyed by the search string ──────────────────────────
+
+export function getCachedSearch(query) {
+    return getItem(SEARCH_KEY(query))?.topics ?? null
+}
+
+export function setCachedSearch(query, topics) {
+    setItem(SEARCH_KEY(query), { topics })
 }

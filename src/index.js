@@ -150,6 +150,18 @@ function showSearchOverlay(errorMsg) {
     }
 }
 
+// Inline error inside the search overlay, without resetting the rest of
+// its state the way showSearchOverlay() does.
+function setSearchError(msg) {
+    const errEl = document.getElementById('search-error')
+    if (msg) {
+        errEl.textContent = msg
+        errEl.hidden = false
+    } else {
+        errEl.hidden = true
+    }
+}
+
 function showLoadingOverlay(topic) {
     document.getElementById('search-overlay').hidden    = false
     document.getElementById('query-chip').hidden        = true
@@ -271,6 +283,7 @@ function initSearch() {
     let debounce = null
     input.addEventListener('input', () => {
         clearTimeout(debounce)
+        setSearchError(null)
         const q = input.value.trim()
         if (!q) { clearTopicList(); return }
         debounce = setTimeout(async () => {
@@ -278,8 +291,14 @@ function initSearch() {
                 const topics = await searchTopics(q)
                 // Only render if the input still matches (user may have kept typing)
                 if (input.value.trim() === q) renderTopicList(topics)
-            } catch (_) {
+            } catch (err) {
+                // Without this a failed lookup is indistinguishable from
+                // "no matches" — which is exactly wrong when the real cause
+                // is a rate limit or an exhausted quota.
                 clearTopicList()
+                if (input.value.trim() === q) {
+                    setSearchError(err.message || 'Search failed. Try again.')
+                }
             }
         }, 300)
     })
