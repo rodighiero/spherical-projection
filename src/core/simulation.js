@@ -1,17 +1,88 @@
 // Main-thread façade for the simulation worker. The real force loop
 // runs in simulation.worker.js — here we just pump positions back
 // into s.nodes and trigger a redraw on each tick.
+//
+// The worker's tick timer runs on setTimeout — Web Workers have no
+// requestAnimationFrame — so ticks arrive off the browser's real vsync
+// cadence and, measured in practice, at roughly half the display's actual
+// refresh rate (physics is the bottleneck, not the screen). Painting
+// synchronously on every message would read as stutter twice over: once
+// from landing off-beat with vsync, and again from only having new data
+// for every other real frame. So instead of drawing on message arrival,
+// we keep the last two received ticks (with their arrival times) and
+// interpolate between them on every requestAnimationFrame callback —
+// vsync-locked by definition — so the sphere animates at the display's
+// full rate even though the underlying physics updates slower.
+//
+// Positions are interpolated in Cartesian x/y/z, not lon/lat: two ticks
+// apart the node has barely moved, so a straight blend between the two
+// xyz points is visually indistinguishable from the true great-circle
+// arc, and — unlike lon/lat — it has no seam at ±180° longitude or pole
+// convergence to glitch across. lon/lat for drawing is then re-derived
+// from the blended xyz, exactly as surfaceForce() does in the worker.
 
 import { drawLinks } from '../render/links'
 import { drawNodes } from '../render/nodes'
 import { drawGraticule } from '../render/graticule'
 import { updateInfoPosition } from './info'
 
+const halfPi = Math.PI / 2
+const asin = (x) => x > 1 ? halfPi : x < -1 ? -halfPi : Math.asin(x)
+
 let worker = null
 let lastAlpha = 1
 
+let prevBuf = null, prevAt = 0
+let nextBuf = null, nextAt = 0
+let looping = false
+
+function frame(now) {
+    if (!nextBuf) { looping = false; return }
+
+    // nextAt is already in the past by the time this callback runs — comparing
+    // `now` straight against prevAt would always land past nextAt and clamp
+    // to 1 immediately, skipping the interpolation entirely. Render one tick
+    // interval behind real time instead (the standard entity-interpolation
+    // delay), so `now` sweeps through [prevAt, nextAt] as the next real tick
+    // is awaited, rather than always trailing both.
+    const span = nextAt - prevAt
+    const t    = span > 0 ? Math.min(1, Math.max(0, (now - nextAt) / span)) : 1
+
+    const a = prevBuf, b = nextBuf
+    const nodes = s.nodes
+
+    for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i]
+        const o = i * 5
+        const x = a[o]     + (b[o]     - a[o])     * t
+        const y = a[o + 1] + (b[o + 1] - a[o + 1]) * t
+        const z = a[o + 2] + (b[o + 2] - a[o + 2]) * t
+        n.x = x
+        n.y = y
+        n.z = z
+        const norm = Math.sqrt(x * x + y * y + z * z) || 1
+        n.spherical = [
+            Math.atan2(y, x) * 180 / Math.PI,
+            asin(z / norm)   * 180 / Math.PI,
+        ]
+    }
+
+    drawLinks()
+    drawNodes()
+    drawGraticule()
+    updateInfoPosition()
+
+    // Still catching up to the latest known tick — keep animating toward
+    // it. Once caught up, go idle rather than redrawing a static scene
+    // forever; a new tick message restarts the loop.
+    if (t < 1) requestAnimationFrame(frame)
+    else       looping = false
+}
+
 function spawnWorker() {
     if (worker) worker.terminate()
+    prevBuf = null; nextBuf = null
+    looping = false
 
     worker = new Worker(
         new URL('./simulation.worker.js', import.meta.url),
@@ -23,22 +94,17 @@ function spawnWorker() {
         if (msg.type !== 'tick') return
 
         lastAlpha = msg.alpha
-        const buf   = msg.positions
-        const nodes = s.nodes
 
-        for (let i = 0; i < nodes.length; i++) {
-            const n = nodes[i]
-            const o = i * 5
-            n.x = buf[o]
-            n.y = buf[o + 1]
-            n.z = buf[o + 2]
-            n.spherical = [buf[o + 3], buf[o + 4]]
+        // First tick ever has nothing to interpolate from — start flat.
+        prevBuf = nextBuf ?? msg.positions
+        prevAt  = nextBuf ? nextAt : performance.now()
+        nextBuf = msg.positions
+        nextAt  = performance.now()
+
+        if (!looping) {
+            looping = true
+            requestAnimationFrame(frame)
         }
-
-        drawLinks()
-        drawNodes()
-        drawGraticule()
-        updateInfoPosition()
     }
 }
 
