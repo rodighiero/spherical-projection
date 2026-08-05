@@ -2,6 +2,19 @@
 // stays free for rendering, dragging, and CSS reflow. Each tick we
 // transfer the new node positions back as a Float32Array — five floats
 // per node: [x, y, z, lon, lat].
+//
+// d3-force's own animation timer is never used here (see stepping below):
+// measured directly, one real force-application step for this network
+// costs ~8ms, but d3-timer's fallback for environments without
+// requestAnimationFrame — which is every Worker, since only Window has it —
+// is a hardcoded `setTimeout(f, 17)` applied *after* each step completes,
+// regardless of how fast that step actually ran. That capped the tick rate
+// around 30/s independent of the real compute cost. Stepping manually via a
+// zero-delay setTimeout chain removes that floor — measured, mean tick
+// interval dropped from ~30ms to ~15.6ms (roughly double the rate). The
+// worker computes as fast as it actually can, and the main thread's
+// interpolation (see simulation.js) already smooths over whatever tick
+// rate results, so the worker no longer needs to pace itself at all.
 
 import * as force3D from 'd3-force-3d'
 
@@ -10,6 +23,7 @@ const asin = (x) => x > 1 ? halfPi : x < -1 ? -halfPi : Math.asin(x)
 
 let nodes = null
 let sim = null
+let running = false
 
 self.onmessage = (e) => {
     const msg = e.data
@@ -40,8 +54,11 @@ self.onmessage = (e) => {
                 .numDimensions(3)
                 .nodes(nodes)
                 // Slow cooling gives the layout more time to spread across
-                // the sphere before settling (~20s at 60fps).
-                .alphaDecay(0.007)
+                // the sphere before settling. Halved from the original
+                // 0.007 to keep the ~20s real-time cool-down after the
+                // manual stepping loop above roughly doubled the tick
+                // rate — same wall-clock pacing, now over ~2x the ticks.
+                .alphaDecay(0.0035)
                 .velocityDecay(0.45)
                 // Allow closer packing without overlap.
                 .force('collide', force3D.forceCollide().radius(spacing * 0.55))
@@ -59,19 +76,25 @@ self.onmessage = (e) => {
                     .strength(d => Math.max(0.4, Math.min(1, d.value || 0.5))))
                 .force('surface', surfaceForce(R))
                 .force('centroid', centroidForce())
-                .on('tick', emitTick)
+
+            // forceSimulation() auto-starts its own d3-timer-driven loop on
+            // construction — stop it immediately so nothing ever runs
+            // through the 17ms-gated path described above. Every step from
+            // here on goes through runLoop() instead.
+            sim.stop()
 
             // Send the initial post-construction positions immediately so
             // the main thread has something to draw before the first tick.
             emitTick()
+            startLoop()
             break
         }
 
-        case 'addTime': sim && sim.alpha(Math.max(sim.alpha(), 0.05)).restart(); break
-        case 'restart': sim && sim.alpha(1).restart(); break
-        case 'pause':   sim && sim.stop(); break
-        case 'resume':      sim && sim.alpha(Math.max(sim.alpha(), 0.3)).restart(); break
-        case 'resumeQuiet': sim && sim.restart(); break
+        case 'addTime': sim && (sim.alpha(Math.max(sim.alpha(), 0.05)), startLoop()); break
+        case 'restart': sim && (sim.alpha(1), startLoop()); break
+        case 'pause':   running = false; break
+        case 'resume':      sim && (sim.alpha(Math.max(sim.alpha(), 0.3)), startLoop()); break
+        case 'resumeQuiet': sim && startLoop(); break
 
         case 'setPositions': {
             const buf = msg.positions   // Float32Array: [x, y, z] per node
@@ -86,6 +109,31 @@ self.onmessage = (e) => {
             break
         }
     }
+}
+
+// Kick off the manual stepping loop if it isn't already running. Guarded
+// so addTime/restart/resume/resumeQuiet can all call it unconditionally
+// without ever spawning a second concurrent chain.
+function startLoop() {
+    if (running) return
+    running = true
+    runLoop()
+}
+
+// One step of pure force computation (sim.tick(), the same work d3-force's
+// own internal step() would do) plus the bookkeeping step() normally
+// handles: dispatching positions and stopping once the simulation has
+// cooled below alphaMin. Reschedules itself with no artificial delay —
+// the browser's own timer floor is the only pacing left.
+function runLoop() {
+    if (!running) return
+    sim.tick()
+    emitTick()
+    if (sim.alpha() < sim.alphaMin()) {
+        running = false
+        return
+    }
+    setTimeout(runLoop, 0)
 }
 
 // Counteracts centroid drift — the tendency of link forces to pull the
