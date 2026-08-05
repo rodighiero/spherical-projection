@@ -357,8 +357,7 @@ function relayout() {
 // ── Drag to rotate ────────────────────────────────────────────────────────────
 
 function initDragToRotate() {
-    const canvas = document.querySelector('body > canvas:last-of-type')
-    if (!canvas) return
+    const canvas = s.canvas
 
     const CLICK_THRESHOLD = 5
     let pending = false, pendingRotate = null
