@@ -64,3 +64,5 @@ Results are cached in `localStorage` for one week (`src/core/cache.js`, key pref
 Vite writes everything to `docs/` (the GitHub Pages source). `codeSplitting: false` in `vite.config.js` forces a single `main.js` — this works around PixiJS v8 dynamic imports that would otherwise produce extra numbered chunks. The worker is emitted as `docs/simulation.worker.js`; its URL is rewritten automatically at build time.
 
 Vite 8 bundles with Rolldown rather than Rollup, so the config uses `build.rolldownOptions` / `worker.rolldownOptions`. `package.json` sets `"type": "module"` so `vite.config.js` is loaded as ESM.
+
+`base: './'` emits relative asset URLs, so one build serves both the dev server at `localhost:5173/` and GitHub Pages at `/spherical-projection/`. Don't hard-code an absolute base — it breaks whichever of the two it isn't set for.

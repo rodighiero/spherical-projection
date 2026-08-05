@@ -2,7 +2,9 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   root: 'src',
-  base: '/spherical-projection/',
+  // Relative so the same build works at any path: the dev server at
+  // localhost:5173/ and GitHub Pages at /spherical-projection/.
+  base: './',
   worker: {
     rolldownOptions: {
       output: {

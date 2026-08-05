@@ -2,6 +2,8 @@
 
 A network drawn on a sphere, then unfolded onto the plane through any of nearly ninety geographic projections — Mercator, Orthographic, Cahill Butterfly, Peirce Quincuncial, and so on.
 
+**[Open the live visualization →](https://rodighiero.github.io/spherical-projection/)**
+
 ## The idea
 
 Network visualizations are almost always flat. Flatness is convenient — it prints, it scrolls, it sits inside a rectangle — but it pays a price. Some nodes always end up at the edges. When the nodes are people, the edge becomes a kind of demotion: the layout itself produces a hierarchy nobody asked for.
@@ -18,7 +20,9 @@ The projection chosen from the menu is a `(λ, φ) → (x, y)` function from `d3
 
 ## Controls
 
-Drag anywhere to rotate the perspective — horizontal moves the longitude, vertical the latitude, and the rotation persists when you switch projection. Scroll or pinch to zoom in (zoom out is disabled because the projection already fits the window). The list along the top is the projection picker; the controls at the bottom-left let you give the simulation more time to settle, restart it cold, pause it, or toggle the graticule overlay.
+Drag anywhere to rotate the perspective — horizontal moves the longitude, vertical the latitude, and the rotation persists when you switch projection. Scroll or pinch to zoom in (zoom out is disabled because the projection already fits the window). The list along the top is the projection picker; the controls at the bottom-left let you give the simulation more time to settle, restart it cold, pause it, or toggle the graticule overlay. The last two buttons export what you see — PNG copies the canvas, SVG re-renders the same state as vector paths for print.
+
+Click a node to pin an info card with the author's institution, output, and topics, plus their OpenAlex page; its co-authors and their links highlight in red. Escape clears the selection.
 
 ## Run
 
@@ -27,11 +31,11 @@ npm install
 npm start
 ```
 
-The dev server lives at `http://localhost:5173`. `npm run build` writes the production bundle into `docs/`, ready to be served as a static site (the repo's GitHub Pages publishes from there).
+The dev server lives at [`http://localhost:5173`](http://localhost:5173). `npm run build` writes the production bundle into `docs/`, ready to be served as a static site (the repo's GitHub Pages publishes from there). Asset paths are relative, so the same build runs unchanged at a domain root or under a subpath like `/spherical-projection/`.
 
 ## Data
 
-Type any research topic into the search bar — the app queries the [OpenAlex API](https://api.openalex.org) live, fetches the top 1 000 most-cited authors in that field, and builds a co-authorship graph from their shared works. Results are cached in the browser for one week so repeat queries are instant.
+Type any research topic into the search bar — the app queries the [OpenAlex API](https://api.openalex.org) live, fetches the top 1 000 most-cited authors in that field, and builds a co-authorship graph from their shared works. Results are cached in the browser for one week so repeat queries are instant; when that cache fills, the oldest networks are evicted to make room.
 
 ## Cite
 
