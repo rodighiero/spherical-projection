@@ -24,14 +24,30 @@ canvas {
 	top: 30px;
 	left: 50%;
 	transform: translateX(-50%);
-	display: grid;
-	grid-auto-flow: column;
+	display: flex;
+	flex-direction: row;
 	column-gap: 18px;
 	font-size: 7px;
 	line-height: 1.8;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
 	pointer-events: none;
+}
+
+#projection-menu .menu-column {
+	display: flex;
+	flex-direction: column;
+	width: 95px;
+}
+
+#projection-menu .menu-family {
+	color: rgba(0, 0, 0, 0.55);
+	font-weight: 700;
+	margin-top: 10px;
+}
+
+#projection-menu .menu-column > .menu-family:first-child {
+	margin-top: 0;
 }
 
 #projection-menu button {

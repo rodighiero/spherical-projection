@@ -20,6 +20,7 @@ import {
 import background from './render/background'
 import { simulation, resetSimulation, addTime, restart, pause, resume, resumeQuiet, isRunning, syncPositions } from './core/simulation'
 import { PROJECTIONS, buildProjection } from './core/projection.js'
+import { FAMILY_ORDER, familyOf } from './core/projectionFamilies.js'
 import { setSelected, findNodeAt } from './core/selection.js'
 import { setInfoContent, updateInfoPosition } from './core/info.js'
 import { downloadPNG, downloadSVG } from './core/download.js'
@@ -41,38 +42,55 @@ let networkActive = false   // true once a network has been loaded
 
 let activeProjection = 'Mercator'
 
-// Matches the button min-width / column-gap the CSS grid is built against —
-// keep in sync with #projection-menu button / column-gap in index.css.
+// Matches the button min-width / column-gap the CSS layout is built against —
+// keep in sync with #projection-menu .menu-column / column-gap in index.css.
 const MENU_ITEM_WIDTH = 95
 const MENU_GAP        = 18
 const MENU_MIN_MARGIN = 24   // smallest the lateral margins are allowed to shrink to
 
-// CSS multi-column's own `column-fill: balance` produced lopsided columns
-// (some 10 items deep, others 7) because the browser balances by estimated
-// height rather than item count. Driving the grid explicitly — one row
-// count for every column, computed from how many columns actually fit —
-// guarantees every column but the last holds exactly the same number of
-// entries, and re-deriving it on demand keeps it correct as columns
-// added/removed with the window width.
+// Built once in initProjectionPanel(): a flat, family-grouped sequence of
+// {el, isHeader} entries (a header div ahead of each family's buttons).
+// layoutProjectionMenu() only ever re-distributes these existing elements
+// into column wrappers — it never recreates them, so listeners and the
+// `.active` class survive a relayout.
+let menuEntries = []
+
+// Columns are independent top-to-bottom flex stacks (not CSS grid rows)
+// specifically so a family header can be taller than a button row without
+// dragging every other column's same row index out of alignment — grid rows
+// are shared across all columns, flex columns aren't.
 //
-// Columns are sized to their natural width (not stretched with `1fr`) and
-// the menu is then centered via CSS transform, so leftover width becomes
-// equal left/right margins instead of dead space stuck on one side.
+// Column/row counts are recomputed from how many fixed-width columns fit
+// the window, then shrunk back to the minimum needed so a wide window never
+// reserves a trailing empty column. The whole block is centered via CSS
+// transform, so leftover width becomes equal left/right margins.
 function layoutProjectionMenu() {
     const menu  = document.getElementById('projection-menu')
-    const count = menu.children.length
+    const count = menuEntries.length
     if (!count) return
+
     const available  = window.innerWidth - 2 * MENU_MIN_MARGIN
     const maxColumns = Math.max(1, Math.floor((available + MENU_GAP) / (MENU_ITEM_WIDTH + MENU_GAP)))
     const rows       = Math.ceil(count / maxColumns)
-    // maxColumns is how many columns *fit* — shrink back down to how many
-    // are actually *needed* to hold `count` items at that row count, or a
-    // wide-enough window reserves a trailing column no button ever lands in.
     const columns    = Math.ceil(count / rows)
-    const width      = columns * MENU_ITEM_WIDTH + (columns - 1) * MENU_GAP
-    menu.style.width               = `${width}px`
-    menu.style.gridTemplateColumns = `repeat(${columns}, ${MENU_ITEM_WIDTH}px)`
-    menu.style.gridTemplateRows    = `repeat(${rows}, auto)`
+
+    menu.replaceChildren()
+    menu.style.width = `${columns * MENU_ITEM_WIDTH + (columns - 1) * MENU_GAP}px`
+
+    let i = 0
+    for (let c = 0; c < columns; c++) {
+        let end = Math.min(i + rows, count)
+        // Never end a column on a lone header with none of its own entries
+        // below it — bump it into the next column instead. Guarded by
+        // `end - 1 > i` so a column that would otherwise hold only that
+        // header (rows === 1) keeps it rather than stalling forever.
+        while (end - 1 > i && end < count && menuEntries[end - 1].isHeader) end--
+
+        const column = document.createElement('div')
+        column.className = 'menu-column'
+        for (; i < end; i++) column.appendChild(menuEntries[i].el)
+        menu.appendChild(column)
+    }
 }
 
 function selectProjection(name) {
@@ -92,16 +110,29 @@ function selectProjection(name) {
 }
 
 function initProjectionPanel() {
-    const menu = document.getElementById('projection-menu')
-    Object.keys(PROJECTIONS).forEach(name => {
-        const button = document.createElement('button')
-        button.type = 'button'
-        button.textContent = name
-        button.dataset.name = name
-        if (name === activeProjection) button.classList.add('active')
-        button.addEventListener('click', () => selectProjection(name))
-        menu.appendChild(button)
+    const namesByFamily = new Map(FAMILY_ORDER.map(family => [family, []]))
+    Object.keys(PROJECTIONS).forEach(name => namesByFamily.get(familyOf(name)).push(name))
+
+    FAMILY_ORDER.forEach(family => {
+        const names = namesByFamily.get(family)
+        if (!names.length) return
+
+        const header = document.createElement('div')
+        header.className = 'menu-family'
+        header.textContent = family
+        menuEntries.push({ el: header, isHeader: true })
+
+        names.forEach(name => {
+            const button = document.createElement('button')
+            button.type = 'button'
+            button.textContent = name
+            button.dataset.name = name
+            if (name === activeProjection) button.classList.add('active')
+            button.addEventListener('click', () => selectProjection(name))
+            menuEntries.push({ el: button, isHeader: false })
+        })
     })
+
     layoutProjectionMenu()
 }
 
