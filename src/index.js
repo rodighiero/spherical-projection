@@ -31,9 +31,12 @@ import { fetchNetwork, searchTopics } from './core/fetcher.js'
 window.d3 = d3
 
 window.s = {
-    nodes:      [],
-    links:      [],
-    projection: null,
+    nodes:          [],
+    links:          [],
+    projection:     null,
+    projectionName: null,
+    topic:          null,
+    rotation:       [0, 0],
 }
 
 let networkActive = false   // true once a network has been loaded
@@ -146,7 +149,8 @@ function layoutProjectionMenu() {
 // no longer redrawn per frame (see simulation.js), which makes
 // refreshGraticulePath() + drawGraticule() easy to omit at a new call site.
 function applyProjection() {
-    s.projection = buildProjection(activeProjection)
+    s.projection     = buildProjection(activeProjection)
+    s.projectionName = activeProjection
     refreshGeoPath()
     refreshGraticulePath()
     if (networkActive) { drawLinks(); drawNodes() }
@@ -220,9 +224,11 @@ function formatRotationDelta([lambda, phi]) {
 // (uncommitted) quaternion so the readout tracks the live drag without
 // mutating totalRotationQ until the gesture actually ends.
 function updateConfigRotation(q = totalRotationQ) {
+    const rotation = versor.rotation(q)
+    s.rotation = rotation
     const posEl = document.getElementById('config-position')
     if (!posEl) return
-    posEl.textContent = formatRotationDelta(versor.rotation(q))
+    posEl.textContent = formatRotationDelta(rotation)
 }
 
 // ── Simulation controls ───────────────────────────────────────────────────────
@@ -441,6 +447,7 @@ async function runQuery(topic) {
     try {
         const { nodes, links } = await fetchNetwork(topic, setLoadingProgress)
         loadNetwork(nodes, links)
+        s.topic = topic
         showQueryChip(topic)
     } catch (err) {
         console.error(err)
@@ -667,7 +674,8 @@ function initChrome() {
     initSearch()
     initChrome()
 
-    s.projection = buildProjection(activeProjection)
+    s.projection     = buildProjection(activeProjection)
+    s.projectionName = activeProjection
 
     await initPixi()
     initLinks()
