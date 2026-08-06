@@ -1,9 +1,8 @@
 import { Graphics } from 'pixi.js'
 import * as d3 from 'd3'
 import { hasSelection, isLinkActive } from '../core/selection'
+import { HIGHLIGHT } from '../core/theme'
 import { PixiGeoContext } from './geoContext'
-
-const HIGHLIGHT = 0xd62828
 
 let stage, pixiCtx, geoPath
 let linksVisible = true
@@ -47,18 +46,24 @@ export function drawLinks() {
 
     if (!linksVisible) return
 
-    // All links — PixiGeoContext flushes internally as the point count
-    // grows, keeping this within PIXI's vertex batch cap regardless of
-    // network size.
+    const active = hasSelection()
+
+    // All links except the active ones (drawn separately below in red) —
+    // an active link would otherwise be stroked black here and immediately
+    // covered by the red pass, wasting a geoPath resample + stroke on
+    // pixels that are never seen. PixiGeoContext flushes internally as the
+    // point count grows, keeping this within PIXI's vertex batch cap
+    // regardless of network size.
     pixiCtx.setStyle(stage, STYLE_LINK)
     s.links.forEach(link => {
+        if (active && isLinkActive(link)) return
         const a = link.source && link.source.spherical
         const b = link.target && link.target.spherical
         if (a && b) drawArc(a, b)
     })
     pixiCtx.flush()
 
-    if (!hasSelection()) return
+    if (!active) return
 
     // Active links overlaid in red.
     pixiCtx.setStyle(stage, STYLE_ACTIVE)

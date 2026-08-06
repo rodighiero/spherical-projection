@@ -21,7 +21,7 @@ import background from './render/background'
 import { simulation, resetSimulation, addTime, restart, pause, resume, resumeQuiet, isRunning, syncPositions } from './core/simulation'
 import { PROJECTIONS, buildProjection, PANEL_MARGIN_PERCENT } from './core/projection.js'
 import { FAMILY_ORDER, familyOf } from './core/projectionFamilies.js'
-import { setSelected, findNodeAt } from './core/selection.js'
+import { setSelected, findNodeAt, endpointId } from './core/selection.js'
 import { setInfoContent, updateInfoPosition } from './core/info.js'
 import { downloadPNG, downloadSVG } from './core/download.js'
 import { fetchNetwork, searchTopics } from './core/fetcher.js'
@@ -398,8 +398,8 @@ function showQueryChip(topic) {
     // ~8% of nodes).
     const connected = new Set()
     s.links.forEach(l => {
-        if (l.source) connected.add(l.source.id ?? l.source)
-        if (l.target) connected.add(l.target.id ?? l.target)
+        if (l.source) connected.add(endpointId(l.source))
+        if (l.target) connected.add(endpointId(l.target))
     })
     const isolated = s.nodes.filter(n => !connected.has(n.id)).length
     const isolatedPct = N ? Math.round((isolated / N) * 100) : 0

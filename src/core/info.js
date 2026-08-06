@@ -14,6 +14,11 @@ let metaEl = null
 let topicsEl = null
 let linkEl = null
 
+// Cached panel size — offsetWidth/offsetHeight force a synchronous layout
+// reflow, so they're read once here (content only changes on selection)
+// rather than every animation frame in updateInfoPosition().
+let pw = 0, ph = 0
+
 function ensure() {
     if (panel) return
     panel         = document.getElementById('info')
@@ -62,6 +67,9 @@ export function setInfoContent(node) {
             linkEl.hidden = true
         }
     }
+
+    pw = panel.offsetWidth
+    ph = panel.offsetHeight
 }
 
 // Reposition the card so it sits next to the projected node, flipping
@@ -79,8 +87,6 @@ export function updateInfoPosition() {
 
     const W  = window.innerWidth
     const H  = window.innerHeight
-    const pw = panel.offsetWidth
-    const ph = panel.offsetHeight
 
     let x = screen.x + OFFSET
     let y = screen.y - ph / 2

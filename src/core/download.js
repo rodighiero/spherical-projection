@@ -11,8 +11,7 @@ import { isNodesVisible } from '../render/nodes'
 import {
     hasSelection, isLinkActive, isNeighbor, getSelected,
 } from './selection'
-
-const HIGHLIGHT = '#d62828'
+import { HIGHLIGHT_CSS as HIGHLIGHT } from './theme'
 
 // ISO A3 landscape (420 x 297mm) at 300dpi — the resolution target for
 // exports, independent of how many CSS pixels the browser window happens to
@@ -54,6 +53,26 @@ export function downloadPNG() {
     }, 'image/png')
 }
 
+// Spherical coordinate pairs for every link matching `predicate` (default:
+// every link), collapsed into one path per call site so the SVG doesn't pay
+// for a <path> element per link.
+function collectLineStrings(predicate) {
+    const lines = []
+    s.links.forEach(link => {
+        if (predicate && !predicate(link)) return
+        const a = link.source && link.source.spherical
+        const b = link.target && link.target.spherical
+        if (a && b) lines.push([a, b])
+    })
+    return lines
+}
+
+function linesPath(path, lines, { stroke, opacity, width }) {
+    const d = path({ type: 'MultiLineString', coordinates: lines })
+    if (!d) return null
+    return `<path d="${d}" fill="none" stroke="${stroke}" stroke-opacity="${opacity}" stroke-width="${width}"/>`
+}
+
 export function downloadSVG() {
     const { x, y, w, h } = windowFrame()
     const path = d3.geoPath(s.projection)
@@ -89,37 +108,18 @@ export function downloadSVG() {
     // the same toggle as the screen — the sphere outline above is drawn
     // regardless, matching links.js.
     if (isLinksVisible()) {
-        const lines = []
-        s.links.forEach(link => {
-            const a = link.source && link.source.spherical
-            const b = link.target && link.target.spherical
-            if (a && b) lines.push([a, b])
+        const linksD = linesPath(path, collectLineStrings(), {
+            stroke: 'black', opacity: 0.3, width: 0.5,
         })
-        const linksD = path({ type: 'MultiLineString', coordinates: lines })
-        if (linksD) {
-            parts.push(
-                `<path d="${linksD}" fill="none" ` +
-                `stroke="black" stroke-opacity="0.3" stroke-width="0.5"/>`
-            )
-        }
+        if (linksD) parts.push(linksD)
     }
 
     // Active links in red
     if (isLinksVisible() && hasSelection()) {
-        const active = []
-        s.links.forEach(link => {
-            if (!isLinkActive(link)) return
-            const a = link.source && link.source.spherical
-            const b = link.target && link.target.spherical
-            if (a && b) active.push([a, b])
+        const activeD = linesPath(path, collectLineStrings(isLinkActive), {
+            stroke: HIGHLIGHT, opacity: 0.75, width: 1,
         })
-        const activeD = path({ type: 'MultiLineString', coordinates: active })
-        if (activeD) {
-            parts.push(
-                `<path d="${activeD}" fill="none" ` +
-                `stroke="${HIGHLIGHT}" stroke-opacity="0.75" stroke-width="1"/>`
-            )
-        }
+        if (activeD) parts.push(activeD)
     }
 
     // All nodes

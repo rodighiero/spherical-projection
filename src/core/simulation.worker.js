@@ -20,6 +20,7 @@
 // rate results, so the worker no longer needs to pace itself at all.
 
 import * as force3D from 'd3-force-3d'
+import { sphereRadius } from './sphere'
 
 let nodes = null
 let sim = null
@@ -34,7 +35,7 @@ self.onmessage = (e) => {
             nodes = msg.nodes
             const links = msg.links
             const N = nodes.length
-            const R = 15 * Math.sqrt(N)
+            const R = sphereRadius(N)
             const spacing = 2 * R * Math.sqrt(Math.PI / N)
 
             // Seed every node on a Fibonacci sphere so the simulation

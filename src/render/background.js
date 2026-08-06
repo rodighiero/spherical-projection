@@ -1,11 +1,14 @@
+let canvas = null
+
 export default () => {
 
-    const canvas = document.querySelector('canvas#background')
+    if (!canvas) {
+        canvas = document.querySelector('canvas#background')
+        document.body.prepend(canvas)
+    }
+
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
-
-    const body = document.querySelector('body')
-    body.prepend(canvas)
 
     const context = canvas.getContext('2d', { alpha: false })
     context.fillStyle = '#ffffff'

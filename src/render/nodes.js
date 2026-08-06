@@ -1,7 +1,6 @@
 import { Graphics } from 'pixi.js'
 import { hasSelection, isNeighbor, getSelected } from '../core/selection'
-
-const HIGHLIGHT = 0xd62828
+import { HIGHLIGHT } from '../core/theme'
 
 let stage
 let nodesVisible = true

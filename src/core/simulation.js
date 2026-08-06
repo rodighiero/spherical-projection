@@ -25,6 +25,8 @@
 import { drawLinks } from '../render/links'
 import { drawNodes } from '../render/nodes'
 import { updateInfoPosition } from './info'
+import { endpointId } from './selection'
+import { sphereRadius } from './sphere'
 
 const halfPi = Math.PI / 2
 const asin = (x) => x > 1 ? halfPi : x < -1 ? -halfPi : Math.asin(x)
@@ -121,8 +123,8 @@ function initWorker() {
         type: 'init',
         nodes: s.nodes.map(n => ({ id: n.id })),
         links: s.links.map(l => ({
-            source: l.source.id != null ? l.source.id : l.source,
-            target: l.target.id != null ? l.target.id : l.target,
+            source: endpointId(l.source),
+            target: endpointId(l.target),
             value:  l.value,
         })),
     })
@@ -154,7 +156,7 @@ export function isRunning() { return lastAlpha > 0.001 }
 export function syncPositions(nodes) {
     if (!worker) return
     const N = nodes.length
-    const R = 15 * Math.sqrt(N)
+    const R = sphereRadius(N)
     const buf = new Float32Array(N * 3)
     for (let i = 0; i < N; i++) {
         const sp = nodes[i].spherical

@@ -7,13 +7,18 @@ const neighborIds = new Set()
 
 export function getSelected() { return selected }
 export function hasSelection() { return selected !== null }
-export function isSelected(node) { return selected !== null && node.id === selected.id }
 export function isNeighbor(node) { return neighborIds.has(node.id) }
+
+// A link endpoint is either a resolved node object or (before loadNetwork()
+// resolves it) a raw id string — resolve to a bare id either way.
+export function endpointId(endpoint) {
+    return endpoint && endpoint.id != null ? endpoint.id : endpoint
+}
 
 export function isLinkActive(link) {
     if (!selected) return false
-    const sId = link.source && link.source.id != null ? link.source.id : link.source
-    const tId = link.target && link.target.id != null ? link.target.id : link.target
+    const sId = endpointId(link.source)
+    const tId = endpointId(link.target)
     return sId === selected.id || tId === selected.id
 }
 
@@ -22,8 +27,8 @@ export function setSelected(node) {
     neighborIds.clear()
     if (!node) return
     for (const link of s.links) {
-        const sId = link.source && link.source.id != null ? link.source.id : link.source
-        const tId = link.target && link.target.id != null ? link.target.id : link.target
+        const sId = endpointId(link.source)
+        const tId = endpointId(link.target)
         if (sId === node.id) neighborIds.add(tId)
         if (tId === node.id) neighborIds.add(sId)
     }
