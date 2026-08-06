@@ -14,20 +14,40 @@
 
 [hidden] { display: none !important; }
 
-/* Shared card look for every floating UI element — puts panels visibly on
-   top of the network instead of letting their text float directly over it.
-   The border only turns visible when the panel actually overlaps the
-   sphere (toggled by updatePanelOverlaps() in index.js) — most panels sit
-   in the margin around the globe and don't need one. Border width stays 1px
-   either way (only the color changes) so toggling it never shifts layout. */
+/* Shared card look for every floating UI element — the background alone
+   puts panels visibly on top of the network instead of letting their text
+   float directly over it, no border needed. */
 .panel {
 	box-sizing: border-box;
 	background: rgba(255, 255, 255, 0.92);
-	border: 1px solid transparent;
 }
 
-.panel.overlapping {
-	border-color: rgba(0, 0, 0, 0.4);
+/* !important because every panel sets its own display (flex, usually) on
+   its ID selector, which otherwise outranks this two-class one regardless
+   of source order — same reason [hidden] above needs it. */
+body.chrome-hidden .panel {
+	display: none !important;
+}
+
+#chrome-toggle {
+	position: absolute;
+	bottom: var(--edge-margin);
+	right: var(--edge-margin);
+	box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.92);
+	padding: 6px 10px;
+	border: none;
+	font: inherit;
+	font-size: 8px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: rgba(0, 0, 0, 0.35);
+	cursor: pointer;
+	transition: color 0.15s ease;
+}
+
+#chrome-toggle:hover {
+	color: #000;
 }
 
 body, html {
@@ -259,35 +279,77 @@ canvas {
    up that nav's font-size/letter-spacing/text-transform by inheritance. */
 /* Lives inline inside #controls, not its own corner card, so it just picks
    up that nav's font-size/letter-spacing/text-transform by inheritance. */
+/* No box of its own, same reason as #controls-actions: its children (title
+   button, divider, GitHub link) become direct participants in #controls'
+   own flex row, so they share its 18px gap instead of a separately-tuned
+   value that's easy to let drift out of sync. */
 #credit {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	gap: 6px;
+	display: contents;
 }
 
-#credit span {
+#credit-title {
+	background: none;
+	border: none;
+	padding: 0;
+	margin: 0;
+	font: inherit;
+	letter-spacing: inherit;
+	text-transform: inherit;
 	color: #000;
+	cursor: pointer;
+	transition: color 0.15s ease;
+	display: inline-flex;
+	align-items: center;
+	line-height: 1;
+	gap: 5px;
 }
 
-#credit .credit-sep {
-	color: rgba(0, 0, 0, 0.3);
+#credit-title:hover {
+	color: rgba(0, 0, 0, 0.6);
+}
+
+/* Disabled on the home screen — there's no active query to reset. Still
+   reads as the plain app title, just without the pointer/hover affordance. */
+#credit-title:disabled,
+#credit-title:disabled:hover {
+	cursor: default;
+	color: #000;
 }
 
 #credit a {
 	color: rgba(0, 0, 0, 0.35);
 	text-decoration: none;
 	transition: color 0.15s ease;
+	display: inline-flex;
+	align-items: center;
+	line-height: 1;
+	gap: 5px;
 }
 
 #credit a:hover {
 	color: #000;
 }
 
-/* Always bordered rather than tracked by updatePanelOverlaps() — it appears
-   wherever you click a node, which by definition is over the network, so
-   the dynamic check would just say "yes" every time anyway. The #info ID
-   selector outweighs .panel.overlapping's specificity regardless of class. */
+/* Same icon box as #controls button::before — inline-block + margin looked
+   fine on its own, but sat a hair off #controls' button-icon baseline once
+   both were in the same row. */
+#credit-title::before,
+#credit a::before {
+	content: '⊕';
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1em;
+	height: 1em;
+	font-size: 1.2em;
+	line-height: 1;
+	color: inherit;
+}
+
+#credit a::before {
+	content: '↗';
+}
+
 #info {
 	position: absolute;
 	width: max-content;
@@ -297,7 +359,6 @@ canvas {
 	line-height: 1.4;
 	color: #000;
 	pointer-events: auto;
-	border-color: rgba(0, 0, 0, 0.4);
 }
 
 #info[hidden] {
@@ -637,23 +698,9 @@ canvas {
 #query-chip-authors,
 #query-chip-links,
 #query-chip-degree,
-#query-chip-citations {
+#query-chip-density,
+#query-chip-citations,
+#query-chip-isolated {
 	color: rgba(0, 0, 0, 0.4);
 }
 
-#new-query-btn {
-	background: none;
-	border: none;
-	padding: 0;
-	margin: 0;
-	font: inherit;
-	letter-spacing: inherit;
-	text-transform: inherit;
-	color: rgba(0, 0, 0, 0.35);
-	cursor: pointer;
-	transition: color 0.15s ease;
-}
-
-#new-query-btn:hover {
-	color: #000;
-}

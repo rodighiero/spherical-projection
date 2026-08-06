@@ -117,30 +117,6 @@ function layoutProjectionMenu() {
     }
 }
 
-// Panels always keep their background, but only show a border where they'd
-// otherwise be hard to read against the network — i.e. where they actually
-// overlap the sphere's projected bounds. The sphere's shape only changes on
-// a projection switch or a resize, so those are the only places this needs
-// re-running (plus once, wherever a panel that was hidden becomes visible).
-function updatePanelOverlaps() {
-    // drawLinks()/drawNodes() both no-op without nodes, so nothing is even
-    // drawn before a network loads (or after "new query" resets to the
-    // search screen) — nothing for a panel to overlap with either, no
-    // matter what the sphere's math bounds say.
-    if (!s.projection || !networkActive) {
-        document.querySelectorAll('.panel.overlapping').forEach(el => el.classList.remove('overlapping'))
-        return
-    }
-    const [[sx0, sy0], [sx1, sy1]] = d3.geoPath(s.projection).bounds({ type: 'Sphere' })
-
-    document.querySelectorAll('.panel').forEach(el => {
-        if (el.offsetParent === null) return   // hidden — nothing to check
-        const r = el.getBoundingClientRect()
-        const overlaps = r.left < sx1 && r.right > sx0 && r.top < sy1 && r.bottom > sy0
-        el.classList.toggle('overlapping', overlaps)
-    })
-}
-
 function selectProjection(name) {
     if (name === activeProjection) return
     if (!PROJECTIONS[name]) return
@@ -156,7 +132,6 @@ function selectProjection(name) {
     drawGraticule()
     updateInfoPosition()
     updateConfigDisplay()
-    updatePanelOverlaps()
 }
 
 function initProjectionPanel() {
@@ -189,9 +164,33 @@ function initProjectionPanel() {
 // ── Config display ────────────────────────────────────────────────────────────
 
 function updateConfigDisplay() {
-    const projEl = document.getElementById('config-projection')
+    const projEl   = document.getElementById('config-projection')
+    const familyEl = document.getElementById('config-family')
     if (!projEl) return
-    projEl.textContent = activeProjection
+    projEl.textContent   = activeProjection
+    familyEl.textContent = familyOf(activeProjection)
+}
+
+// Cumulative drag-to-rotate offset from the network's initial orientation —
+// a quaternion so successive drags compose correctly (see initDragToRotate);
+// reset to identity whenever a new network loads. [lambda, phi] read off it
+// via versor.rotation() are themselves already a lon/lat-style rotation
+// delta in degrees, not a node's actual coordinate — see CLAUDE.md's
+// [lon, lat] node.spherical for the ellipse this angle rotates against.
+let totalRotationQ = [1, 0, 0, 0]
+
+function formatRotationDelta([lambda, phi]) {
+    const sign = v => (v >= 0 ? '+' : '') + v.toFixed(1)
+    return `lon ${sign(lambda)}°, lat ${sign(phi)}°`
+}
+
+// Defaults to the committed total, but a drag-in-progress passes its own
+// (uncommitted) quaternion so the readout tracks the live drag without
+// mutating totalRotationQ until the gesture actually ends.
+function updateConfigRotation(q = totalRotationQ) {
+    const posEl = document.getElementById('config-position')
+    if (!posEl) return
+    posEl.textContent = formatRotationDelta(versor.rotation(q))
 }
 
 // ── Simulation controls ───────────────────────────────────────────────────────
@@ -269,6 +268,7 @@ function showSearchOverlay(errorMsg) {
     document.getElementById('query-chip').hidden        = true
     document.getElementById('config').hidden            = true
     document.getElementById('controls-actions').hidden  = true
+    document.getElementById('credit-title').disabled    = true
     // Reset to idle state
     document.getElementById('search-label').hidden      = false
     document.getElementById('search-bar').hidden        = false
@@ -302,6 +302,7 @@ function showLoadingOverlay(topic) {
     document.getElementById('query-chip').hidden        = true
     document.getElementById('config').hidden            = true
     document.getElementById('controls-actions').hidden  = true
+    document.getElementById('credit-title').disabled    = true
     document.getElementById('search-label').hidden      = true
     document.getElementById('search-bar').hidden        = true
     document.getElementById('search-error').hidden      = true
@@ -321,6 +322,7 @@ function showQueryChip(topic) {
     chip.hidden = false
     document.getElementById('config').hidden = false
     document.getElementById('controls-actions').hidden = false
+    document.getElementById('credit-title').disabled = false
     document.getElementById('query-chip-label').textContent    = topic.display_name
     document.getElementById('query-chip-subfield').textContent = topic.subfield ? `subfield · ${topic.subfield}` : ''
 
@@ -334,14 +336,27 @@ function showQueryChip(topic) {
     document.getElementById('query-chip-degree').textContent =
         `avg ${avgDeg} co-authors`
 
+    const maxLinks = N * (N - 1) / 2
+    const density  = maxLinks ? (L / maxLinks) * 100 : 0
+    document.getElementById('query-chip-density').textContent =
+        `${density < 0.1 && density > 0 ? '<0.1' : density.toFixed(1)}% density`
+
     const totalCit = s.nodes.reduce((sum, n) => sum + (n.cited_by_count || 0), 0)
     document.getElementById('query-chip-citations').textContent =
         `${totalCit.toLocaleString()} citations`
 
-    // query-chip/config were just unhidden above — give them an initial
-    // overlap check rather than leaving them borderless until the next
-    // resize or projection change.
-    updatePanelOverlaps()
+    // Authors fetchNetwork() kept even though they had no co-authors in
+    // this set — free-floating dots on the sphere (see CLAUDE.md, typically
+    // ~8% of nodes).
+    const connected = new Set()
+    s.links.forEach(l => {
+        if (l.source) connected.add(l.source.id ?? l.source)
+        if (l.target) connected.add(l.target.id ?? l.target)
+    })
+    const isolated = s.nodes.filter(n => !connected.has(n.id)).length
+    const isolatedPct = N ? Math.round((isolated / N) * 100) : 0
+    document.getElementById('query-chip-isolated').textContent =
+        `${isolated.toLocaleString()} isolated (${isolatedPct}%)`
 }
 
 // ── Network launch ────────────────────────────────────────────────────────────
@@ -361,6 +376,11 @@ function loadNetwork(nodes, links) {
     // explicitly now that the count just changed, since the per-frame
     // simulation loop no longer redraws the (position-independent) grid.
     drawGraticule()
+
+    // A freshly (re)loaded network's Fibonacci-sphere seed is the new
+    // "initial position" the rotation offset is measured from.
+    totalRotationQ = [1, 0, 0, 0]
+    updateConfigRotation()
 
     if (networkActive) {
         resetSimulation()
@@ -426,7 +446,7 @@ function clearTopicList() {
 function initSearch() {
     const input  = document.getElementById('search-input')
     const submit = document.getElementById('search-submit')
-    const newBtn = document.getElementById('new-query-btn')
+    const titleBtn = document.getElementById('credit-title')
 
     // Live search — debounced 300 ms
     let debounce = null
@@ -465,7 +485,7 @@ function initSearch() {
     // Hide list on blur (unless user is clicking a list item — prevented by mousedown)
     input.addEventListener('blur', () => clearTopicList())
 
-    newBtn.addEventListener('click', () => {
+    titleBtn.addEventListener('click', () => {
         pause()
         s.nodes = []
         s.links = []
@@ -476,7 +496,6 @@ function initSearch() {
         drawLinks()
         drawNodes()
         drawGraticule()
-        updatePanelOverlaps()
 
         input.value = ''
         clearTopicList()
@@ -497,7 +516,6 @@ function relayout() {
     if (networkActive) { drawLinks(); drawNodes() }
     drawGraticule()
     updateInfoPosition()
-    updatePanelOverlaps()
 }
 
 // ── Drag to rotate ────────────────────────────────────────────────────────────
@@ -506,7 +524,7 @@ function initDragToRotate() {
     const canvas = s.canvas
 
     const CLICK_THRESHOLD = 5
-    let pending = false, pendingRotate = null
+    let pending = false, pendingRotate = null, pendingDeltaQ = null
     let v0, initialPositions, moved, wasRunning
 
     function scheduleRedraw() {
@@ -519,6 +537,7 @@ function initDragToRotate() {
                 })
                 pendingRotate = null
             }
+            if (pendingDeltaQ) updateConfigRotation(versor.multiply(pendingDeltaQ, totalRotationQ))
             if (networkActive) { drawLinks(); drawNodes() }
             pending = false
         })
@@ -540,8 +559,12 @@ function initDragToRotate() {
                 if (!v0) return
                 const geo1 = s.projection.invert([event.x, event.y])
                 if (!geo1) return
-                const delta = versor.rotation(versor.delta(v0, versor.cartesian(geo1)))
-                pendingRotate = d3.geoRotation(delta)
+                // Quaternion form drives both the node rotation (via its
+                // Euler equivalent, for d3.geoRotation) and the live
+                // #config-position readout (composed on top of the total
+                // committed so far, without mutating it — see scheduleRedraw).
+                pendingDeltaQ = versor.delta(v0, versor.cartesian(geo1))
+                pendingRotate = d3.geoRotation(versor.rotation(pendingDeltaQ))
                 scheduleRedraw()
             })
             .on('end', event => {
@@ -551,8 +574,13 @@ function initDragToRotate() {
                         if (initialPositions[i]) node.spherical = pendingRotate(initialPositions[i])
                     })
                 }
+                if (pendingDeltaQ) {
+                    totalRotationQ = versor.multiply(pendingDeltaQ, totalRotationQ)
+                    updateConfigRotation()
+                }
                 initialPositions = null
                 pendingRotate = null
+                pendingDeltaQ = null
                 pending = false
                 if (wasRunning) { syncPositions(s.nodes); resumeQuiet() }
                 if (moved < CLICK_THRESHOLD) {
@@ -575,8 +603,21 @@ function selectNode(node) {
     updateInfoPosition()
 }
 
+// ── Chrome (panel) visibility ─────────────────────────────────────────────────
+
+function toggleChrome() {
+    const hidden = document.body.classList.toggle('chrome-hidden')
+    document.getElementById('chrome-toggle').textContent = hidden ? 'Show panels' : 'Hide panels'
+}
+
+document.getElementById('chrome-toggle').addEventListener('click', toggleChrome)
+
 window.addEventListener('keydown', e => {
     if (e.key === 'Escape') selectNode(null)
+    // Ignore while typing — 'h' is a normal search-query character.
+    else if (e.key.toLowerCase() === 'h' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        toggleChrome()
+    }
 })
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
@@ -588,7 +629,6 @@ window.addEventListener('keydown', e => {
     initSearch()
 
     s.projection = buildProjection(activeProjection)
-    updatePanelOverlaps()
 
     await initPixi()
     initLinks()

@@ -9,7 +9,7 @@ const graticule = d3.geoGraticule10()
 
 export function initGraticule() {
     stage = new Graphics()
-    stage.visible = false
+    stage.visible = true
     s.pixi.addChild(stage)
     pixiCtx = new PixiGeoContext()
     refreshGraticulePath()

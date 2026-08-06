@@ -7,9 +7,21 @@ import * as d3p from 'd3-geo-projection'
 
 const PARALLELS = [30, 60]
 
-// Non-projection geo* exports to skip
+// Non-projection geo* exports to skip, plus three projections that are
+// mathematically fine but structurally can't display a whole-world network:
+//   geoAlbersUsa      — composite hardcoded to the continental US + Alaska/
+//                       Hawaii insets; any point outside that projects to
+//                       null and just vanishes.
+//   geoConicConformal — its pole-to-infinity singularity makes fitExtent's
+//                       "how big is the whole Sphere outline" measurement
+//                       blow up, so the scale it computes to compensate
+//                       crushes the visible network down to under 1px.
+//   geoLittrow        — a retroazimuthal projection valid for one
+//                       hemisphere only; asked to fit the whole Sphere it
+//                       collapses the same way as Conic Conformal above.
 const EXCLUDED = new Set([
     'geoIdentity', 'geoProjection', 'geoProjectionMutator',
+    'geoAlbersUsa', 'geoConicConformal', 'geoLittrow',
 ])
 
 // "geoAzimuthalEqualArea" → "Azimuthal Equal Area"
@@ -41,8 +53,17 @@ function discoverProjections() {
 
         map[name] = () => {
             const p = factory()
-            // Conic projections expose .parallels(); set sensible defaults
-            if (typeof p.parallels === 'function') p.parallels(PARALLELS)
+            // Conic projections expose .parallels(); set sensible defaults.
+            // A couple of non-conics (Wagner, Wagner 7) happen to expose
+            // the same accessor name but silently corrupt their own output
+            // to [NaN, NaN] once it's called — verify with a real test
+            // point rather than trusting the method's presence, and fall
+            // back to an unconfigured instance if it broke anything.
+            if (typeof p.parallels === 'function') {
+                p.parallels(PARALLELS)
+                const test = p([10, 45])
+                if (!test || !Number.isFinite(test[0]) || !Number.isFinite(test[1])) return factory()
+            }
             return p
         }
     }

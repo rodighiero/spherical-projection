@@ -11,6 +11,10 @@
 
     <canvas id='background'></canvas>
 
+    <!-- Deliberately not a .panel — it has to survive body.chrome-hidden
+         hiding every .panel, or there'd be no way back without a reload. -->
+    <button id='chrome-toggle' title='Hide/show panels (H)'>Hide panels</button>
+
     <!-- Search / loading state — single overlay handles both phases -->
     <div id='search-overlay'>
         <p id='search-label'>Enter a research topic</p>
@@ -45,8 +49,8 @@
     <nav id='projection-menu' class='panel'></nav>
     <nav id='controls' class='panel'>
         <span id='credit'>
-            <span>Spherical Projection</span>
-            <span class='credit-sep'>–</span>
+            <button id='credit-title' title='Start a new query' disabled>Spherical Projection</button>
+            <span class='controls-divider'></span>
             <a href='https://github.com/rodighiero/spherical-projection' target='_blank' rel='noopener'>GitHub</a>
         </span>
         <!-- Simulation + export actions do nothing until a network is
@@ -80,16 +84,19 @@
         <span id='query-chip-authors'></span>
         <span id='query-chip-links'></span>
         <span id='query-chip-degree'></span>
+        <span id='query-chip-density'></span>
         <span id='query-chip-citations'></span>
-        <button id='new-query-btn'>new query</button>
+        <span id='query-chip-isolated'></span>
     </div>
 
     <div id='config' class='panel' hidden>
         <span id='config-projection'></span>
+        <span id='config-family'></span>
+        <span id='config-position'></span>
         <div id='config-toggles'>
-            <button data-action='graticule'>
+            <button data-action='graticule' class='active'>
                 <span>Graticule</span>
-                <span class='toggle-state'>off</span>
+                <span class='toggle-state'>on</span>
             </button>
             <button data-action='links' class='active'>
                 <span>Links</span>

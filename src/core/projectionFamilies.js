@@ -34,7 +34,7 @@ const FAMILIES = {
         'Sinu Mollweide', 'Sinusoidal', 'Wagner', 'Wagner 4', 'Wagner 6',
     ],
     Conic: [
-        'Albers', 'Albers Usa', 'Conic Conformal', 'Conic Equal Area', 'Conic Equidistant',
+        'Albers', 'Conic Equal Area', 'Conic Equidistant',
     ],
     Pseudoconic: [
         'Bonne', 'Bottomley',
@@ -50,7 +50,7 @@ const FAMILIES = {
         'Aitoff', 'Berghaus', 'Hammer', 'Wagner 7', 'Wiechel', 'Winkel 3',
     ],
     Retroazimuthal: [
-        'Craig', 'Hammer Retroazimuthal', 'Littrow',
+        'Craig', 'Hammer Retroazimuthal',
     ],
     Polyconic: [
         'Polyconic', 'Rectangular Polyconic',
