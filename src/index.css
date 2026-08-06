@@ -15,11 +15,19 @@
 [hidden] { display: none !important; }
 
 /* Shared card look for every floating UI element — puts panels visibly on
-   top of the network instead of letting their text float directly over it. */
+   top of the network instead of letting their text float directly over it.
+   The border only turns visible when the panel actually overlaps the
+   sphere (toggled by updatePanelOverlaps() in index.js) — most panels sit
+   in the margin around the globe and don't need one. Border width stays 1px
+   either way (only the color changes) so toggling it never shifts layout. */
 .panel {
 	box-sizing: border-box;
 	background: rgba(255, 255, 255, 0.92);
-	border: 1px solid rgba(0, 0, 0, 0.4);
+	border: 1px solid transparent;
+}
+
+.panel.overlapping {
+	border-color: rgba(0, 0, 0, 0.4);
 }
 
 body, html {
@@ -118,6 +126,13 @@ canvas {
 	font-size: 8px;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
+}
+
+/* No box of its own — its children flow straight into #controls' flex row
+   (same gaps as if they were direct children) so hiding/showing this group
+   doesn't disturb the row's layout, it just removes/restores those items. */
+#controls-actions {
+	display: contents;
 }
 
 /* Splits the bar into three groups — credit (Spherical Projection, linking
@@ -242,16 +257,37 @@ canvas {
 
 /* Lives inline inside #controls, not its own corner card, so it just picks
    up that nav's font-size/letter-spacing/text-transform by inheritance. */
+/* Lives inline inside #controls, not its own corner card, so it just picks
+   up that nav's font-size/letter-spacing/text-transform by inheritance. */
 #credit {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 6px;
+}
+
+#credit span {
+	color: #000;
+}
+
+#credit .credit-sep {
+	color: rgba(0, 0, 0, 0.3);
+}
+
+#credit a {
 	color: rgba(0, 0, 0, 0.35);
 	text-decoration: none;
 	transition: color 0.15s ease;
 }
 
-#credit:hover {
+#credit a:hover {
 	color: #000;
 }
 
+/* Always bordered rather than tracked by updatePanelOverlaps() — it appears
+   wherever you click a node, which by definition is over the network, so
+   the dynamic check would just say "yes" every time anyway. The #info ID
+   selector outweighs .panel.overlapping's specificity regardless of class. */
 #info {
 	position: absolute;
 	width: max-content;
@@ -261,6 +297,7 @@ canvas {
 	line-height: 1.4;
 	color: #000;
 	pointer-events: auto;
+	border-color: rgba(0, 0, 0, 0.4);
 }
 
 #info[hidden] {

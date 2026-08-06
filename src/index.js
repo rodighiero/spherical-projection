@@ -117,6 +117,30 @@ function layoutProjectionMenu() {
     }
 }
 
+// Panels always keep their background, but only show a border where they'd
+// otherwise be hard to read against the network — i.e. where they actually
+// overlap the sphere's projected bounds. The sphere's shape only changes on
+// a projection switch or a resize, so those are the only places this needs
+// re-running (plus once, wherever a panel that was hidden becomes visible).
+function updatePanelOverlaps() {
+    // drawLinks()/drawNodes() both no-op without nodes, so nothing is even
+    // drawn before a network loads (or after "new query" resets to the
+    // search screen) — nothing for a panel to overlap with either, no
+    // matter what the sphere's math bounds say.
+    if (!s.projection || !networkActive) {
+        document.querySelectorAll('.panel.overlapping').forEach(el => el.classList.remove('overlapping'))
+        return
+    }
+    const [[sx0, sy0], [sx1, sy1]] = d3.geoPath(s.projection).bounds({ type: 'Sphere' })
+
+    document.querySelectorAll('.panel').forEach(el => {
+        if (el.offsetParent === null) return   // hidden — nothing to check
+        const r = el.getBoundingClientRect()
+        const overlaps = r.left < sx1 && r.right > sx0 && r.top < sy1 && r.bottom > sy0
+        el.classList.toggle('overlapping', overlaps)
+    })
+}
+
 function selectProjection(name) {
     if (name === activeProjection) return
     if (!PROJECTIONS[name]) return
@@ -132,6 +156,7 @@ function selectProjection(name) {
     drawGraticule()
     updateInfoPosition()
     updateConfigDisplay()
+    updatePanelOverlaps()
 }
 
 function initProjectionPanel() {
@@ -242,6 +267,8 @@ function setLoadingProgress({ step, label, pct }) {
 function showSearchOverlay(errorMsg) {
     document.getElementById('search-overlay').hidden    = false
     document.getElementById('query-chip').hidden        = true
+    document.getElementById('config').hidden            = true
+    document.getElementById('controls-actions').hidden  = true
     // Reset to idle state
     document.getElementById('search-label').hidden      = false
     document.getElementById('search-bar').hidden        = false
@@ -273,6 +300,8 @@ function setSearchError(msg) {
 function showLoadingOverlay(topic) {
     document.getElementById('search-overlay').hidden    = false
     document.getElementById('query-chip').hidden        = true
+    document.getElementById('config').hidden            = true
+    document.getElementById('controls-actions').hidden  = true
     document.getElementById('search-label').hidden      = true
     document.getElementById('search-bar').hidden        = true
     document.getElementById('search-error').hidden      = true
@@ -290,6 +319,8 @@ function showQueryChip(topic) {
     document.getElementById('search-overlay').hidden  = true
     const chip = document.getElementById('query-chip')
     chip.hidden = false
+    document.getElementById('config').hidden = false
+    document.getElementById('controls-actions').hidden = false
     document.getElementById('query-chip-label').textContent    = topic.display_name
     document.getElementById('query-chip-subfield').textContent = topic.subfield ? `subfield · ${topic.subfield}` : ''
 
@@ -307,6 +338,10 @@ function showQueryChip(topic) {
     document.getElementById('query-chip-citations').textContent =
         `${totalCit.toLocaleString()} citations`
 
+    // query-chip/config were just unhidden above — give them an initial
+    // overlap check rather than leaving them borderless until the next
+    // resize or projection change.
+    updatePanelOverlaps()
 }
 
 // ── Network launch ────────────────────────────────────────────────────────────
@@ -441,6 +476,7 @@ function initSearch() {
         drawLinks()
         drawNodes()
         drawGraticule()
+        updatePanelOverlaps()
 
         input.value = ''
         clearTopicList()
@@ -461,6 +497,7 @@ function relayout() {
     if (networkActive) { drawLinks(); drawNodes() }
     drawGraticule()
     updateInfoPosition()
+    updatePanelOverlaps()
 }
 
 // ── Drag to rotate ────────────────────────────────────────────────────────────
@@ -551,6 +588,7 @@ window.addEventListener('keydown', e => {
     initSearch()
 
     s.projection = buildProjection(activeProjection)
+    updatePanelOverlaps()
 
     await initPixi()
     initLinks()
