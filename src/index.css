@@ -23,7 +23,7 @@
    so it takes .card alone rather than restating the background literal. */
 .card {
 	box-sizing: border-box;
-	background: rgba(255, 255, 255, 0.92);
+	background: rgba(255, 255, 255, 0.75);
 }
 
 /* !important because every panel sets its own display (flex, usually) on
@@ -438,7 +438,7 @@ canvas {
 	align-items: center;
 	gap: 0;
 	border: 1px solid rgba(0, 0, 0, 0.25);
-	background: rgba(255, 255, 255, 0.85);
+	background: rgba(255, 255, 255, 0.75);
 }
 
 #search-input {
@@ -499,7 +499,7 @@ canvas {
 	flex-direction: column;
 	border: 1px solid rgba(0, 0, 0, 0.25);
 	border-top: none;
-	background: rgba(255, 255, 255, 0.92);
+	background: rgba(255, 255, 255, 0.75);
 	z-index: 10;
 }
 
@@ -548,7 +548,7 @@ canvas {
 	flex-direction: column;
 	width: 262px;
 	border: 1px solid rgba(0, 0, 0, 0.25);
-	background: rgba(255, 255, 255, 0.92);
+	background: rgba(255, 255, 255, 0.75);
 }
 
 #loading-list[hidden] {
