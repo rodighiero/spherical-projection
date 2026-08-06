@@ -37,6 +37,7 @@ export default async () => {
 
     s.pixi = viewport
     s.canvas = app.canvas
+    s.renderer = app.renderer
 
     // Activate plugins.
     // Drag is intentionally NOT enabled here — drag gestures rotate the

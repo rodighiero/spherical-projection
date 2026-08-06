@@ -1,8 +1,10 @@
-// Export the current visualisation as PNG (composited canvas) or SVG
-// (re-rendered through d3.geoPath without a context). Both flavours
-// match the on-screen state, including selection highlights.
+// Export the current visualisation as PNG (rendered through PIXI's extract
+// system) or SVG (re-rendered through d3.geoPath without a context). Both
+// flavours capture the full window, not just the sphere, and match the
+// on-screen state including selection highlights.
 
 import * as d3 from 'd3'
+import { Rectangle } from 'pixi.js'
 import { isGraticuleVisible } from '../render/graticule'
 import { isLinksVisible } from '../render/links'
 import { isNodesVisible } from '../render/nodes'
@@ -11,18 +13,15 @@ import {
 } from './selection'
 
 const HIGHLIGHT = '#d62828'
-const CROP_PAD  = 8   // px breathing room around the sphere border
 
-// Returns the bounding box of the projected sphere in CSS pixels,
-// expanded by CROP_PAD so the border stroke is never clipped.
-function frameBounds() {
-    const [[x0, y0], [x1, y1]] = d3.geoPath(s.projection).bounds({ type: 'Sphere' })
-    return {
-        x: Math.floor(x0) - CROP_PAD,
-        y: Math.floor(y0) - CROP_PAD,
-        w: Math.ceil(x1 - x0) + CROP_PAD * 2,
-        h: Math.ceil(y1 - y0) + CROP_PAD * 2,
-    }
+// ISO A3 landscape (420 x 297mm) at 300dpi — the resolution target for
+// exports, independent of how many CSS pixels the browser window happens to
+// be. Whichever axis is the tighter fit sets the scale, so the export is at
+// least this sharp on both dimensions regardless of window aspect ratio.
+const A3_LANDSCAPE_PX = { w: 4961, h: 3508 }
+
+function windowFrame() {
+    return { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }
 }
 
 function triggerDownload(blob, filename) {
@@ -37,32 +36,26 @@ function triggerDownload(blob, filename) {
 }
 
 export function downloadPNG() {
-    const { x, y, w, h } = frameBounds()
-    const scale = 2  // matches PIXI's resolution
+    const { x, y, w, h } = windowFrame()
+    const resolution = Math.max(A3_LANDSCAPE_PX.w / w, A3_LANDSCAPE_PX.h / h)
 
-    const out = document.createElement('canvas')
-    out.width  = w * scale
-    out.height = h * scale
-    const ctx = out.getContext('2d')
+    // extract.canvas does its own offscreen render pass at the requested
+    // resolution — decoupled from the live PIXI canvas, so this can exceed
+    // the on-screen render quality without touching it.
+    const canvas = s.renderer.extract.canvas({
+        target:     s.pixi,
+        frame:      new Rectangle(x, y, w, h),
+        resolution,
+        clearColor: '#ffffff',
+    })
 
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, out.width, out.height)
-
-    // Copy only the frame region from the PIXI canvas (which is 2× resolution).
-    if (s.canvas) {
-        ctx.drawImage(s.canvas,
-            x * scale, y * scale, w * scale, h * scale,
-            0, 0, w * scale, h * scale
-        )
-    }
-
-    out.toBlob(blob => {
+    canvas.toBlob(blob => {
         if (blob) triggerDownload(blob, fileName('png'))
     }, 'image/png')
 }
 
 export function downloadSVG() {
-    const { x, y, w, h } = frameBounds()
+    const { x, y, w, h } = windowFrame()
     const path = d3.geoPath(s.projection)
 
     const parts = []
