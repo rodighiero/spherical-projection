@@ -11,7 +11,10 @@ export default async () => {
         height: window.innerHeight,
         antialias: true,
         backgroundAlpha: 0,
-        resolution: 2,
+        // Was hardcoded to 2 — under-samples (visible pixelation on thin
+        // link strokes) on any display denser than that, capped at 3 so an
+        // unusually dense mobile panel doesn't blow up the vertex/fill cost.
+        resolution: Math.min(window.devicePixelRatio || 1, 3),
         autoDensity: true,
         resizeTo: window,
         // Required so we can read canvas pixels (PNG export) after a render.

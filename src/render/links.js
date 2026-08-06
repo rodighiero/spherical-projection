@@ -20,7 +20,7 @@ export function refreshGeoPath() {
 }
 
 const STYLE_SPHERE = { width: 1, color: 0x000000, alpha: 0.5 }
-const STYLE_LINK = { width: 0.2, color: 0x000000, alpha: 1.0 }
+const STYLE_LINK = { width: 0.25, color: 0x000000, alpha: 1.0 }
 const STYLE_ACTIVE = { width: 0.6, color: HIGHLIGHT, alpha: 1.0 }
 
 // Reused for every link on every frame instead of allocating a fresh

@@ -42,7 +42,7 @@ After a drag-to-rotate, `syncPositions()` converts `node.spherical` back to Cart
 
 ### Rendering (PixiJS v8 + d3-geo)
 
-- `src/render/pixi.js` — initialises a PixiJS `Application` (WebGL, 2× resolution, `preserveDrawingBuffer` for PNG export) and a `pixi-viewport` Viewport. Drag is intentionally disabled on the viewport — sphere rotation hijacks it.
+- `src/render/pixi.js` — initialises a PixiJS `Application` (WebGL, resolution matched to `window.devicePixelRatio` and capped at 3× to avoid pixelated thin link strokes without blowing up fill cost on unusually dense displays, `preserveDrawingBuffer` for canvas readback) and a `pixi-viewport` Viewport. Drag is intentionally disabled on the viewport — sphere rotation hijacks it.
 - `src/render/geoContext.js` — `PixiGeoContext`, shared by `links.js` and `graticule.js`: makes a PIXI `Graphics` object look like a Canvas 2D context so `d3.geoPath` can write into it. d3.geoPath does not call `beginPath()` between top-level geometries, so it tracks the accumulated point count itself and flushes (`stroke()`) whenever a new subpath is about to start with the running total past its threshold — keeping every draw within PIXI v8's ~65 535-vertex hard cap regardless of network size, without ever splitting a single link's arc mid-curve.
 - `src/render/links.js` — draws links as great-circle geodesics through `PixiGeoContext`.
 - `src/render/nodes.js` — draws nodes as small circles via PIXI `Graphics`. Selected node gets a larger dot + ring; its neighbors get a medium dot; both in `HIGHLIGHT` red (`0xd62828`).
