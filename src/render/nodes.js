@@ -4,6 +4,7 @@ import { hasSelection, isNeighbor, getSelected } from '../core/selection'
 const HIGHLIGHT = 0xd62828
 
 let stage
+let nodesVisible = true
 
 export function initNodes() {
     const graphics = new Graphics()
@@ -12,6 +13,7 @@ export function initNodes() {
 
 export function drawNodes() {
     stage.clear()
+    if (!nodesVisible) return
 
     // Always draw the full network at full strength so the visual base
     // never changes — the highlight is purely additive on top.
@@ -43,4 +45,13 @@ export function drawNodes() {
             stage.stroke({ width: 0.8, color: HIGHLIGHT, alpha: 0.6 })
         }
     }
+}
+
+export function setNodesVisible(v) {
+    nodesVisible = v
+    drawNodes()
+}
+
+export function isNodesVisible() {
+    return nodesVisible
 }

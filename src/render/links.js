@@ -6,6 +6,7 @@ import { PixiGeoContext } from './geoContext'
 const HIGHLIGHT = 0xd62828
 
 let stage, pixiCtx, geoPath
+let linksVisible = true
 
 export function initLinks() {
     const graphics = new Graphics()
@@ -33,6 +34,8 @@ export function drawLinks() {
     geoPath({ type: 'Sphere' })
     pixiCtx.flush()
 
+    if (!linksVisible) return
+
     // All links — PixiGeoContext flushes internally as the point count
     // grows, keeping this within PIXI's vertex batch cap regardless of
     // network size.
@@ -57,4 +60,15 @@ export function drawLinks() {
         geoPath({ type: 'LineString', coordinates: [a, b] })
     })
     pixiCtx.flush()
+}
+
+// Gates only the link segments, not the sphere outline above — toggling
+// links off should still leave the frame of the projection visible.
+export function setLinksVisible(v) {
+    linksVisible = v
+    drawLinks()
+}
+
+export function isLinksVisible() {
+    return linksVisible
 }

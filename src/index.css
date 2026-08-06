@@ -4,7 +4,23 @@
 	font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+:root {
+	/* Shared edge inset for every UI panel anchored to a window border —
+	   matches PANEL_MARGIN_PERCENT in core/projection.js. The map itself
+	   uses a larger MARGIN_PERCENT (10%) so it has more room to clear the
+	   panels; keep both in sync if either changes. */
+	--edge-margin: min(5vw, 5vh);
+}
+
 [hidden] { display: none !important; }
+
+/* Shared card look for every floating UI element — puts panels visibly on
+   top of the network instead of letting their text float directly over it. */
+.panel {
+	box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.92);
+	border: 1px solid rgba(0, 0, 0, 0.4);
+}
 
 body, html {
 	color: #000;
@@ -21,9 +37,10 @@ canvas {
 
 #projection-menu {
 	position: absolute;
-	top: 30px;
+	top: var(--edge-margin);
 	left: 50%;
 	transform: translateX(-50%);
+	padding: 14px 16px;
 	display: flex;
 	flex-direction: row;
 	column-gap: 18px;
@@ -31,13 +48,12 @@ canvas {
 	line-height: 1.8;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	pointer-events: none;
 }
 
 #projection-menu .menu-column {
 	display: flex;
 	flex-direction: column;
-	width: 95px;
+	/* Width is set inline per layout — see layoutProjectionMenu() in index.js. */
 }
 
 #projection-menu .menu-family {
@@ -91,8 +107,10 @@ canvas {
 
 #controls {
 	position: absolute;
-	bottom: 24px;
-	left: 60px;
+	bottom: var(--edge-margin);
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 10px 16px;
 	display: flex;
 	flex-direction: row;
 	align-items: center;
@@ -100,6 +118,16 @@ canvas {
 	font-size: 8px;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
+}
+
+/* Splits the bar into three groups — credit (Spherical Projection, linking
+   out to GitHub), simulation (Add time/Restart/Pause), and export (PNG/SVG)
+   — grouped with gap alone they'd read as one run with no hint of the
+   boundaries. */
+.controls-divider {
+	width: 1px;
+	height: 14px;
+	background: rgba(0, 0, 0, 0.4);
 }
 
 #controls button {
@@ -135,7 +163,6 @@ canvas {
 #controls button[data-action='restart']::before   { content: '↻'; }
 #controls button[data-action='toggle']::before    { content: '⏸'; }
 #controls button[data-action='toggle'].paused::before { content: '▶'; }
-#controls button[data-action='graticule']::before { content: '⊞'; }
 #controls button[data-action='download-png']::before { content: '↓'; }
 #controls button[data-action='download-svg']::before { content: '↓'; }
 
@@ -149,8 +176,10 @@ canvas {
 
 #config {
 	position: absolute;
-	bottom: 64px;
-	right: 60px;
+	right: var(--edge-margin);
+	top: 50%;
+	transform: translateY(-50%);
+	padding: 8px 12px;
 	display: flex;
 	flex-direction: column;
 	align-items: flex-end;
@@ -166,31 +195,60 @@ canvas {
 	color: #000;
 }
 
-#credit {
-	position: absolute;
-	bottom: 24px;
-	right: 60px;
+/* Column layout, each row right-aligned as a label+state pair — matches
+   #config's own flex-end alignment and the rest of the corner panels
+   (#credit, #query-chip), rather than the labels hugging the left edge. */
+#config-toggles {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-end;
 	gap: 4px;
-	font-size: 8px;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
-	line-height: 1;
+	margin-top: 4px;
 }
 
-#credit span {
+#config-toggles button {
+	display: flex;
+	flex-direction: row;
+	justify-content: flex-end;
+	align-items: baseline;
+	gap: 6px;
+	background: none;
+	border: none;
+	padding: 0;
+	margin: 0;
+	font: inherit;
+	letter-spacing: inherit;
+	text-transform: inherit;
+	color: rgba(0, 0, 0, 0.35);
+	cursor: pointer;
+	transition: color 0.15s ease;
+}
+
+#config-toggles button:hover {
+	color: rgba(0, 0, 0, 0.7);
+}
+
+#config-toggles button.active {
 	color: #000;
 }
 
-#credit a {
+#config-toggles .toggle-state {
+	color: rgba(0, 0, 0, 0.4);
+}
+
+#config-toggles button.active .toggle-state {
+	color: inherit;
+}
+
+/* Lives inline inside #controls, not its own corner card, so it just picks
+   up that nav's font-size/letter-spacing/text-transform by inheritance. */
+#credit {
 	color: rgba(0, 0, 0, 0.35);
 	text-decoration: none;
 	transition: color 0.15s ease;
 }
 
-#credit a:hover {
+#credit:hover {
 	color: #000;
 }
 
@@ -202,8 +260,6 @@ canvas {
 	font-size: 9px;
 	line-height: 1.4;
 	color: #000;
-	background: rgba(255, 255, 255, 0.92);
-	border: 1px solid rgba(0, 0, 0, 0.4);
 	pointer-events: auto;
 }
 
@@ -514,11 +570,13 @@ canvas {
 
 #query-chip {
 	position: absolute;
-	bottom: 106px;
-	right: 60px;
+	left: var(--edge-margin);
+	top: 50%;
+	transform: translateY(-50%);
+	padding: 10px 12px;
 	display: flex;
 	flex-direction: column;
-	align-items: flex-end;
+	align-items: flex-start;
 	gap: 2px;
 	font-size: 8px;
 	letter-spacing: 0.04em;

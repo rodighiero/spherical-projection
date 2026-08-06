@@ -59,8 +59,16 @@ export const PROJECTIONS = discoverProjections()
 
 // The map is centered in the window; MARGIN_PERCENT sets its minimum
 // breathing room on every side, as a share of whichever screen dimension is
-// smaller — the axis the map would reach the edge of first.
-export const MARGIN_PERCENT = 0.05
+// smaller — the axis the map would reach the edge of first. Deliberately
+// larger than PANEL_MARGIN_PERCENT (index.css's --edge-margin, also used by
+// the projection menu's own layout below) to leave more room for the map to
+// avoid overlapping the corner UI.
+export const MARGIN_PERCENT = 0.10
+
+// Kept separate from MARGIN_PERCENT — the panels sit closer to the window
+// edge than the map does. Mirrored by --edge-margin in index.css; keep both
+// in sync if this changes.
+export const PANEL_MARGIN_PERCENT = 0.05
 
 // ── Projection builder ────────────────────────────────────────────────────────
 

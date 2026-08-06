@@ -42,28 +42,19 @@
         <p id='search-error' hidden></p>
     </div>
 
-    <!-- Active state decorations — shown once a network is loaded -->
-    <div id='query-chip' hidden>
-        <span id='query-chip-label'></span>
-        <span id='query-chip-subfield'></span>
-        <span id='query-chip-authors'></span>
-        <span id='query-chip-links'></span>
-        <span id='query-chip-degree'></span>
-        <span id='query-chip-citations'></span>
-        <button id='new-query-btn'>new query</button>
-    </div>
-
-    <nav id='projection-menu'></nav>
-    <nav id='controls'>
+    <nav id='projection-menu' class='panel'></nav>
+    <nav id='controls' class='panel'>
+        <a id='credit' href='https://github.com/rodighiero/spherical-projection' target='_blank' rel='noopener'>Spherical Projection</a>
+        <span class='controls-divider'></span>
         <button data-action='add'>Add time</button>
         <button data-action='restart'>Restart</button>
         <button data-action='toggle'>Pause</button>
-        <button data-action='graticule'>Graticule</button>
+        <span class='controls-divider'></span>
         <button data-action='download-png'>PNG</button>
         <button data-action='download-svg'>SVG</button>
     </nav>
 
-    <aside id='info' hidden>
+    <aside id='info' class='panel' hidden>
         <div id='info-header'>
             <h3 id='info-name'></h3>
             <p id='info-institution' hidden></p>
@@ -73,15 +64,34 @@
         <a id='info-link' href='#' target='_blank' rel='noopener' hidden>↗ OpenAlex</a>
     </aside>
 
-    <div id='config'>
-        <span id='config-projection'></span>
-        <span id='config-graticule' hidden>Graticule</span>
+    <!-- Left edge, vertically centered: joins once a network is loaded. -->
+    <div id='query-chip' class='panel' hidden>
+        <span id='query-chip-label'></span>
+        <span id='query-chip-subfield'></span>
+        <span id='query-chip-authors'></span>
+        <span id='query-chip-links'></span>
+        <span id='query-chip-degree'></span>
+        <span id='query-chip-citations'></span>
+        <button id='new-query-btn'>new query</button>
     </div>
 
-    <footer id='credit'>
-        <span>Spherical Projection</span>
-        <a href='https://github.com/rodighiero/spherical-projection' target='_blank' rel='noopener'>GitHub</a>
-    </footer>
+    <div id='config' class='panel'>
+        <span id='config-projection'></span>
+        <div id='config-toggles'>
+            <button data-action='graticule'>
+                <span>Graticule</span>
+                <span class='toggle-state'>off</span>
+            </button>
+            <button data-action='links' class='active'>
+                <span>Links</span>
+                <span class='toggle-state'>on</span>
+            </button>
+            <button data-action='nodes' class='active'>
+                <span>Nodes</span>
+                <span class='toggle-state'>on</span>
+            </button>
+        </div>
+    </div>
 
     <script type="module" src="./index.js"></script>
 </body>

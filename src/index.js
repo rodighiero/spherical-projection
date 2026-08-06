@@ -11,15 +11,15 @@ import versor from 'versor'
 // Init
 
 import initPixi from './render/pixi.js'
-import { initLinks, refreshGeoPath, drawLinks } from './render/links.js'
-import { initNodes, drawNodes } from './render/nodes.js'
+import { initLinks, refreshGeoPath, drawLinks, setLinksVisible, isLinksVisible } from './render/links.js'
+import { initNodes, drawNodes, setNodesVisible, isNodesVisible } from './render/nodes.js'
 import {
     initGraticule, refreshGraticulePath, drawGraticule,
     setGraticuleVisible, isGraticuleVisible,
 } from './render/graticule.js'
 import background from './render/background'
 import { simulation, resetSimulation, addTime, restart, pause, resume, resumeQuiet, isRunning, syncPositions } from './core/simulation'
-import { PROJECTIONS, buildProjection } from './core/projection.js'
+import { PROJECTIONS, buildProjection, PANEL_MARGIN_PERCENT } from './core/projection.js'
 import { FAMILY_ORDER, familyOf } from './core/projectionFamilies.js'
 import { setSelected, findNodeAt } from './core/selection.js'
 import { setInfoContent, updateInfoPosition } from './core/info.js'
@@ -40,13 +40,30 @@ let networkActive = false   // true once a network has been loaded
 
 // ── Projection selector ───────────────────────────────────────────────────────
 
-let activeProjection = 'Mercator'
+// Not under cache.js's 'sp:' prefix on purpose — that prefix is scanned and
+// TTL-pruned as fetched-network/search cache entries, and this is neither.
+const LAST_PROJECTION_KEY = 'spherical-projection:last-projection'
 
-// Matches the button min-width / column-gap the CSS layout is built against —
-// keep in sync with #projection-menu .menu-column / column-gap in index.css.
+function loadLastProjection() {
+    try {
+        const saved = localStorage.getItem(LAST_PROJECTION_KEY)
+        return saved && PROJECTIONS[saved] ? saved : 'Mercator'
+    } catch (_) {
+        return 'Mercator'   // localStorage unavailable (private mode, etc.)
+    }
+}
+
+let activeProjection = loadLastProjection()
+
+// Matches the button min-width / column-gap / padding / border the CSS
+// layout is built against — keep in sync with #projection-menu and
+// #projection-menu .menu-column in index.css. Padding + border are needed
+// because the menu is box-sizing: border-box, so its outer (border) edge —
+// not its content box — is what lands flush on --edge-margin.
 const MENU_ITEM_WIDTH = 95
 const MENU_GAP        = 18
-const MENU_MIN_MARGIN = 24   // smallest the lateral margins are allowed to shrink to
+const MENU_PADDING_X  = 16
+const MENU_BORDER     = 1
 
 // Built once in initProjectionPanel(): a flat, family-grouped sequence of
 // {el, isHeader} entries (a header div ahead of each family's buttons).
@@ -60,22 +77,28 @@ let menuEntries = []
 // dragging every other column's same row index out of alignment — grid rows
 // are shared across all columns, flex columns aren't.
 //
-// Column/row counts are recomputed from how many fixed-width columns fit
-// the window, then shrunk back to the minimum needed so a wide window never
-// reserves a trailing empty column. The whole block is centered via CSS
-// transform, so leftover width becomes equal left/right margins.
+// Column/row counts are recomputed from how many MENU_ITEM_WIDTH-wide
+// columns fit the window, then shrunk back to the minimum needed so a wide
+// window never reserves a trailing empty column. Columns are then widened
+// (gap stays fixed at MENU_GAP) to fill the margin-to-margin width exactly
+// — MENU_ITEM_WIDTH is only ever a floor — so the outer columns' edges land
+// flush on the same --edge-margin the rest of the UI uses, instead of
+// leaving the leftover as dead space outside a tightly-packed block.
 function layoutProjectionMenu() {
     const menu  = document.getElementById('projection-menu')
     const count = menuEntries.length
     if (!count) return
 
-    const available  = window.innerWidth - 2 * MENU_MIN_MARGIN
-    const maxColumns = Math.max(1, Math.floor((available + MENU_GAP) / (MENU_ITEM_WIDTH + MENU_GAP)))
-    const rows       = Math.ceil(count / maxColumns)
-    const columns    = Math.ceil(count / rows)
+    const minMargin  = PANEL_MARGIN_PERCENT * Math.min(window.innerWidth, window.innerHeight)
+    const outerWidth = window.innerWidth - 2 * minMargin
+    const innerWidth = outerWidth - 2 * (MENU_PADDING_X + MENU_BORDER)
+    const maxColumns  = Math.max(1, Math.floor((innerWidth + MENU_GAP) / (MENU_ITEM_WIDTH + MENU_GAP)))
+    const rows        = Math.ceil(count / maxColumns)
+    const columns     = Math.ceil(count / rows)
+    const columnWidth = (innerWidth - (columns - 1) * MENU_GAP) / columns
 
     menu.replaceChildren()
-    menu.style.width = `${columns * MENU_ITEM_WIDTH + (columns - 1) * MENU_GAP}px`
+    menu.style.width = `${outerWidth}px`
 
     let i = 0
     for (let c = 0; c < columns; c++) {
@@ -88,6 +111,7 @@ function layoutProjectionMenu() {
 
         const column = document.createElement('div')
         column.className = 'menu-column'
+        column.style.width = `${columnWidth}px`
         for (; i < end; i++) column.appendChild(menuEntries[i].el)
         menu.appendChild(column)
     }
@@ -97,6 +121,7 @@ function selectProjection(name) {
     if (name === activeProjection) return
     if (!PROJECTIONS[name]) return
     activeProjection = name
+    try { localStorage.setItem(LAST_PROJECTION_KEY, name) } catch (_) { /* private mode etc. — non-fatal */ }
     document.querySelectorAll('#projection-menu button').forEach(b =>
         b.classList.toggle('active', b.dataset.name === name)
     )
@@ -140,11 +165,8 @@ function initProjectionPanel() {
 
 function updateConfigDisplay() {
     const projEl = document.getElementById('config-projection')
-    const gEl    = document.getElementById('config-graticule')
     if (!projEl) return
     projEl.textContent = activeProjection
-    gEl.textContent = `Graticule ${isGraticuleVisible() ? 'on' : 'off'}`
-    gEl.hidden = false
 }
 
 // ── Simulation controls ───────────────────────────────────────────────────────
@@ -169,14 +191,34 @@ function initControls() {
                 toggleBtn.classList.remove('paused')
             }
         }
-        else if (action === 'graticule') {
-            const next = !isGraticuleVisible()
-            setGraticuleVisible(next)
-            e.target.classList.toggle('active', next)
-            updateConfigDisplay()
-        }
         else if (action === 'download-png') downloadPNG()
         else if (action === 'download-svg') downloadSVG()
+    })
+}
+
+// ── View-layer toggles (graticule / links / nodes) ───────────────────────────
+// Live in the #config panel, next to the projection name, rather than in
+// #controls — they describe what's currently shown, same as that panel's text.
+
+function initConfigToggles() {
+    const toggles = document.getElementById('config-toggles')
+
+    // Each button holds a label span plus a '.toggle-state' span — a click
+    // can land on either, so find the button itself rather than trusting
+    // e.target to be it directly.
+    function applyToggle(btn, next, setVisible) {
+        setVisible(next)
+        btn.classList.toggle('active', next)
+        btn.querySelector('.toggle-state').textContent = next ? 'on' : 'off'
+    }
+
+    toggles.addEventListener('click', e => {
+        const btn    = e.target.closest('[data-action]')
+        const action = btn && btn.dataset.action
+        if (!action) return
+        if (action === 'graticule') applyToggle(btn, !isGraticuleVisible(), setGraticuleVisible)
+        else if (action === 'links') applyToggle(btn, !isLinksVisible(), setLinksVisible)
+        else if (action === 'nodes') applyToggle(btn, !isNodesVisible(), setNodesVisible)
     })
 }
 
@@ -505,6 +547,7 @@ window.addEventListener('keydown', e => {
 ;(async () => {
     initProjectionPanel()
     initControls()
+    initConfigToggles()
     initSearch()
 
     s.projection = buildProjection(activeProjection)
@@ -513,6 +556,10 @@ window.addEventListener('keydown', e => {
     initLinks()
     initNodes()
     initGraticule()
+
+    // Show the projection name from the first frame — previously this only
+    // populated once the user touched a control.
+    updateConfigDisplay()
 
     background()
 
