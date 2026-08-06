@@ -16,8 +16,12 @@
 
 /* Shared card look for every floating UI element — the background alone
    puts panels visibly on top of the network instead of letting their text
-   float directly over it, no border needed. */
-.panel {
+   float directly over it, no border needed.
+   Split from .panel on purpose: .card is the look, .panel additionally
+   opts into being hidden by the chrome toggle. #chrome-toggle must wear
+   the same card but survive the hiding (it's the control that undoes it),
+   so it takes .card alone rather than restating the background literal. */
+.card {
 	box-sizing: border-box;
 	background: rgba(255, 255, 255, 0.92);
 }
@@ -29,12 +33,33 @@ body.chrome-hidden .panel {
 	display: none !important;
 }
 
+/* The app's one button idiom: strip the native chrome and inherit the
+   surrounding panel's typography, so a button reads as text that happens
+   to be clickable. Declared once for every such button; the rules below
+   carry only each one's layout/colour deltas. Listed before them so those
+   deltas win on source order (same specificity).
+   #chrome-toggle is deliberately not here — it keeps the .card background
+   and sets its own type scale, since it sits outside every panel. */
+#projection-menu button,
+#controls button,
+#config-toggles button,
+#credit-title {
+	background: none;
+	border: none;
+	padding: 0;
+	margin: 0;
+	font: inherit;
+	letter-spacing: inherit;
+	text-transform: inherit;
+	color: rgba(0, 0, 0, 0.35);
+	cursor: pointer;
+	transition: color 0.15s ease;
+}
+
 #chrome-toggle {
 	position: absolute;
 	bottom: var(--edge-margin);
 	right: var(--edge-margin);
-	box-sizing: border-box;
-	background: rgba(255, 255, 255, 0.92);
 	padding: 6px 10px;
 	border: none;
 	font: inherit;
@@ -97,21 +122,10 @@ canvas {
 #projection-menu button {
 	display: block;
 	max-width: 100%;
-	background: none;
-	border: none;
-	padding: 0;
-	margin: 0;
-	font: inherit;
-	letter-spacing: inherit;
-	text-transform: inherit;
-	color: rgba(0, 0, 0, 0.35);
-	cursor: pointer;
 	text-align: left;
-	transition: color 0.15s ease;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	pointer-events: auto;
 }
 
 #projection-menu button::before {
@@ -166,24 +180,20 @@ canvas {
 }
 
 #controls button {
-	background: none;
-	border: none;
-	padding: 0;
-	margin: 0;
-	font: inherit;
-	letter-spacing: inherit;
-	text-transform: inherit;
-	color: rgba(0, 0, 0, 0.35);
-	cursor: pointer;
 	text-align: left;
-	transition: color 0.15s ease;
 	display: inline-flex;
 	align-items: center;
 	line-height: 1;
 	gap: 5px;
 }
 
-#controls button::before {
+/* Shared icon box for every glyph that sits in #controls' row — a fixed
+   1em square rather than inline-block + margin, so the icons all share one
+   baseline instead of each drifting a hair off the others. `content` is
+   set per icon below. */
+#controls button::before,
+#credit-title::before,
+#credit a::before {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -203,10 +213,6 @@ canvas {
 
 #controls button:hover {
 	color: rgba(0, 0, 0, 0.7);
-}
-
-#controls button.active {
-	color: #000;
 }
 
 #config {
@@ -247,16 +253,6 @@ canvas {
 	justify-content: flex-end;
 	align-items: baseline;
 	gap: 6px;
-	background: none;
-	border: none;
-	padding: 0;
-	margin: 0;
-	font: inherit;
-	letter-spacing: inherit;
-	text-transform: inherit;
-	color: rgba(0, 0, 0, 0.35);
-	cursor: pointer;
-	transition: color 0.15s ease;
 }
 
 #config-toggles button:hover {
@@ -275,10 +271,6 @@ canvas {
 	color: inherit;
 }
 
-/* Lives inline inside #controls, not its own corner card, so it just picks
-   up that nav's font-size/letter-spacing/text-transform by inheritance. */
-/* Lives inline inside #controls, not its own corner card, so it just picks
-   up that nav's font-size/letter-spacing/text-transform by inheritance. */
 /* No box of its own, same reason as #controls-actions: its children (title
    button, divider, GitHub link) become direct participants in #controls'
    own flex row, so they share its 18px gap instead of a separately-tuned
@@ -288,16 +280,7 @@ canvas {
 }
 
 #credit-title {
-	background: none;
-	border: none;
-	padding: 0;
-	margin: 0;
-	font: inherit;
-	letter-spacing: inherit;
-	text-transform: inherit;
 	color: #000;
-	cursor: pointer;
-	transition: color 0.15s ease;
 	display: inline-flex;
 	align-items: center;
 	line-height: 1;
@@ -330,20 +313,8 @@ canvas {
 	color: #000;
 }
 
-/* Same icon box as #controls button::before — inline-block + margin looked
-   fine on its own, but sat a hair off #controls' button-icon baseline once
-   both were in the same row. */
-#credit-title::before,
-#credit a::before {
+#credit-title::before {
 	content: '⊕';
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 1em;
-	height: 1em;
-	font-size: 1.2em;
-	line-height: 1;
-	color: inherit;
 }
 
 #credit a::before {

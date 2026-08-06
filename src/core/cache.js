@@ -13,29 +13,42 @@
 // setItem therefore evicts on quota failure — expired entries first,
 // then oldest-fetched — instead of silently giving up.
 
-const PREFIX     = 'sp:'
-const SEARCH_KEY = query => PREFIX + 'q:' + query.trim().toLowerCase()
-const TTL_MS     = 7 * 24 * 60 * 60 * 1000  // 1 week
+const PREFIX        = 'sp:'
+const SEARCH_PREFIX = PREFIX + 'q:'
+const SEARCH_KEY    = query => SEARCH_PREFIX + query.trim().toLowerCase()
+const TTL_MS        = 7 * 24 * 60 * 60 * 1000  // 1 week
 
-// Every cache entry as { key, ts }, oldest first. Entries we can't parse
-// get ts = 0 so they sort to the front and are evicted first.
+const isSearchKey = key => key.startsWith(SEARCH_PREFIX)
+
+// setItem always serialises `ts` first, so it can be read straight off the
+// raw string. Worth the regex: a network entry is ~1 MB, and JSON.parse-ing
+// one to reach a single integer materialises a thousand node objects and
+// thousands of links only to discard them.
+const TS_RE = /^\{"ts":(\d+)/
+
+// Every cache entry as { key, ts }, oldest first. Entries we can't read a
+// timestamp from get ts = 0 so they sort to the front and are evicted first.
 function entries() {
     const out = []
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
         if (!key || !key.startsWith(PREFIX)) continue
-        let ts = 0
-        try { ts = JSON.parse(localStorage.getItem(key)).ts || 0 } catch (_) { /* ts stays 0 */ }
-        out.push({ key, ts })
+        const match = TS_RE.exec(localStorage.getItem(key) || '')
+        out.push({ key, ts: match ? Number(match[1]) : 0 })
     }
     return out.sort((a, b) => a.ts - b.ts)
 }
 
+// Drops everything past its TTL and returns the entries that survived, so
+// callers that go on to evict don't have to rescan the whole cache.
 function pruneExpired() {
     const cutoff = Date.now() - TTL_MS
-    for (const { key, ts } of entries()) {
-        if (ts < cutoff) localStorage.removeItem(key)
+    const live = []
+    for (const entry of entries()) {
+        if (entry.ts < cutoff) localStorage.removeItem(entry.key)
+        else live.push(entry)
     }
+    return live
 }
 
 function getItem(key) {
@@ -53,7 +66,12 @@ function getItem(key) {
     }
 }
 
-function setItem(key, rest) {
+// `canEvict` optionally narrows which entries this write is allowed to
+// sacrifice. Autocomplete passes one: a few hundred bytes of search result
+// must never be the reason a ~1 MB network gets dropped, or typing a dozen
+// characters against a full cache would walk every cached network out and
+// turn each one back into a 30s refetch.
+function setItem(key, rest, canEvict = () => true) {
     let payload
     try {
         payload = JSON.stringify({ ts: Date.now(), ...rest })
@@ -68,12 +86,13 @@ function setItem(key, rest) {
     if (write()) return
 
     // Out of room. Reclaim anything already expired, then retry.
-    pruneExpired()
+    const live = pruneExpired()
     if (write()) return
 
-    // Still too big — drop the oldest live entries one at a time.
-    for (const { key: victim } of entries()) {
-        if (victim === key) continue
+    // Still too big — drop the oldest live entries one at a time, reusing
+    // the list pruneExpired() just built rather than rescanning.
+    for (const { key: victim } of live) {
+        if (victim === key || !canEvict(victim)) continue
         localStorage.removeItem(victim)
         if (write()) return
     }
@@ -99,5 +118,5 @@ export function getCachedSearch(query) {
 }
 
 export function setCachedSearch(query, topics) {
-    setItem(SEARCH_KEY(query), { topics })
+    setItem(SEARCH_KEY(query), { topics }, isSearchKey)
 }

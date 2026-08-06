@@ -1,7 +1,10 @@
 // Force-directed simulation, run inside a Web Worker so the main thread
 // stays free for rendering, dragging, and CSS reflow. Each tick we
-// transfer the new node positions back as a Float32Array — five floats
-// per node: [x, y, z, lon, lat].
+// transfer the new node positions back as a Float32Array — three floats
+// per node: [x, y, z]. lon/lat is deliberately not shipped: the main
+// thread interpolates between two ticks in Cartesian space and derives
+// lon/lat from the *blended* xyz (see simulation.js), so any lon/lat
+// computed here would be thrown away.
 //
 // d3-force's own animation timer is never used here (see stepping below):
 // measured directly, one real force-application step for this network
@@ -17,9 +20,6 @@
 // rate results, so the worker no longer needs to pace itself at all.
 
 import * as force3D from 'd3-force-3d'
-
-const halfPi = Math.PI / 2
-const asin = (x) => x > 1 ? halfPi : x < -1 ? -halfPi : Math.asin(x)
 
 let nodes = null
 let sim = null
@@ -164,10 +164,6 @@ function surfaceForce(R) {
 
             node.norm = Math.sqrt(node.x ** 2 + node.y ** 2 + node.z ** 2) || 1
 
-            const lon = Math.atan2(node.y, node.x) * 180 / Math.PI
-            const lat = asin(node.z / node.norm) * 180 / Math.PI
-            node.spherical = [lon, lat]
-
             // Pull node toward sphere surface of radius R
             const f = (1 + R / node.norm) / 2
             node.x *= f
@@ -185,15 +181,13 @@ function surfaceForce(R) {
 
 function emitTick() {
     const N = nodes.length
-    const buf = new Float32Array(N * 5)
+    const buf = new Float32Array(N * 3)
     for (let i = 0; i < N; i++) {
         const n = nodes[i]
-        const o = i * 5
+        const o = i * 3
         buf[o    ] = n.x
         buf[o + 1] = n.y
         buf[o + 2] = n.z
-        buf[o + 3] = n.spherical ? n.spherical[0] : 0
-        buf[o + 4] = n.spherical ? n.spherical[1] : 0
     }
     // Transfer the buffer's underlying ArrayBuffer — zero-copy handoff.
     self.postMessage(

@@ -13,7 +13,7 @@
 
     <!-- Deliberately not a .panel — it has to survive body.chrome-hidden
          hiding every .panel, or there'd be no way back without a reload. -->
-    <button id='chrome-toggle' title='Hide/show panels (H)'>Hide panels</button>
+    <button id='chrome-toggle' class='card' title='Hide/show panels (H)'>Hide panels</button>
 
     <!-- Search / loading state — single overlay handles both phases -->
     <div id='search-overlay'>
@@ -46,8 +46,8 @@
         <p id='search-error' hidden></p>
     </div>
 
-    <nav id='projection-menu' class='panel'></nav>
-    <nav id='controls' class='panel'>
+    <nav id='projection-menu' class='card panel'></nav>
+    <nav id='controls' class='card panel'>
         <span id='credit'>
             <button id='credit-title' title='Start a new query' disabled>Spherical Projection</button>
             <span class='controls-divider'></span>
@@ -67,7 +67,7 @@
         </span>
     </nav>
 
-    <aside id='info' class='panel' hidden>
+    <aside id='info' class='card panel' hidden>
         <div id='info-header'>
             <h3 id='info-name'></h3>
             <p id='info-institution' hidden></p>
@@ -78,7 +78,7 @@
     </aside>
 
     <!-- Left edge, vertically centered: joins once a network is loaded. -->
-    <div id='query-chip' class='panel' hidden>
+    <div id='query-chip' class='card panel' hidden>
         <span id='query-chip-label'></span>
         <span id='query-chip-subfield'></span>
         <span id='query-chip-authors'></span>
@@ -89,7 +89,7 @@
         <span id='query-chip-isolated'></span>
     </div>
 
-    <div id='config' class='panel' hidden>
+    <div id='config' class='card panel' hidden>
         <span id='config-projection'></span>
         <span id='config-family'></span>
         <span id='config-position'></span>

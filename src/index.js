@@ -44,33 +44,48 @@ let networkActive = false   // true once a network has been loaded
 // TTL-pruned as fetched-network/search cache entries, and this is neither.
 const LAST_PROJECTION_KEY = 'spherical-projection:last-projection'
 
+function randomProjection() {
+    const names = Object.keys(PROJECTIONS)
+    return names[Math.floor(Math.random() * names.length)]
+}
+
 function loadLastProjection() {
     try {
         const saved = localStorage.getItem(LAST_PROJECTION_KEY)
-        return saved && PROJECTIONS[saved] ? saved : 'Mercator'
+        // No saved choice yet (first-ever visit) — open on a random
+        // projection instead of always defaulting to the same one, but
+        // once you've picked one it's remembered and restored as usual.
+        return saved && PROJECTIONS[saved] ? saved : randomProjection()
     } catch (_) {
-        return 'Mercator'   // localStorage unavailable (private mode, etc.)
+        return randomProjection()   // localStorage unavailable (private mode, etc.)
     }
 }
 
 let activeProjection = loadLastProjection()
 
-// Matches the button min-width / column-gap / padding / border the CSS
-// layout is built against — keep in sync with #projection-menu and
-// #projection-menu .menu-column in index.css. Padding + border are needed
-// because the menu is box-sizing: border-box, so its outer (border) edge —
-// not its content box — is what lands flush on --edge-margin.
+// Matches the button min-width / column-gap / padding the CSS layout is
+// built against — keep in sync with #projection-menu and
+// #projection-menu .menu-column in index.css. Padding is subtracted
+// because the menu is box-sizing: border-box, so its outer edge — not its
+// content box — is what lands flush on --edge-margin. (.panel deliberately
+// has no border, so there is none to account for.)
 const MENU_ITEM_WIDTH = 95
 const MENU_GAP        = 18
 const MENU_PADDING_X  = 16
-const MENU_BORDER     = 1
 
 // Built once in initProjectionPanel(): a flat, family-grouped sequence of
-// {el, isHeader} entries (a header div ahead of each family's buttons).
+// elements (a .menu-family header div ahead of each family's buttons).
 // layoutProjectionMenu() only ever re-distributes these existing elements
 // into column wrappers — it never recreates them, so listeners and the
 // `.active` class survive a relayout.
 let menuEntries = []
+
+const isFamilyHeader = el => el.classList.contains('menu-family')
+
+// Last column/row split actually built. A resize that doesn't cross a
+// breakpoint then only rewrites widths, instead of tearing down and
+// re-appending ~100 elements on every resize frame.
+let menuShape = null
 
 // Columns are independent top-to-bottom flex stacks (not CSS grid rows)
 // specifically so a family header can be taller than a button row without
@@ -91,14 +106,22 @@ function layoutProjectionMenu() {
 
     const minMargin  = PANEL_MARGIN_PERCENT * Math.min(window.innerWidth, window.innerHeight)
     const outerWidth = window.innerWidth - 2 * minMargin
-    const innerWidth = outerWidth - 2 * (MENU_PADDING_X + MENU_BORDER)
+    const innerWidth = outerWidth - 2 * MENU_PADDING_X
     const maxColumns  = Math.max(1, Math.floor((innerWidth + MENU_GAP) / (MENU_ITEM_WIDTH + MENU_GAP)))
     const rows        = Math.ceil(count / maxColumns)
     const columns     = Math.ceil(count / rows)
     const columnWidth = (innerWidth - (columns - 1) * MENU_GAP) / columns
 
-    menu.replaceChildren()
     menu.style.width = `${outerWidth}px`
+
+    // Same split as last time — only the widths moved.
+    if (menuShape && menuShape.rows === rows && menuShape.columns === columns) {
+        for (const column of menu.children) column.style.width = `${columnWidth}px`
+        return
+    }
+    menuShape = { rows, columns }
+
+    menu.replaceChildren()
 
     let i = 0
     for (let c = 0; c < columns; c++) {
@@ -107,14 +130,28 @@ function layoutProjectionMenu() {
         // below it — bump it into the next column instead. Guarded by
         // `end - 1 > i` so a column that would otherwise hold only that
         // header (rows === 1) keeps it rather than stalling forever.
-        while (end - 1 > i && end < count && menuEntries[end - 1].isHeader) end--
+        while (end - 1 > i && end < count && isFamilyHeader(menuEntries[end - 1])) end--
 
         const column = document.createElement('div')
         column.className = 'menu-column'
         column.style.width = `${columnWidth}px`
-        for (; i < end; i++) column.appendChild(menuEntries[i].el)
+        for (; i < end; i++) column.appendChild(menuEntries[i])
         menu.appendChild(column)
     }
+}
+
+// Rebuild s.projection and repaint everything that reads it. Every path
+// that changes the projection — a menu pick, a resize — goes through
+// here, so none of them can forget a step. In particular the graticule is
+// no longer redrawn per frame (see simulation.js), which makes
+// refreshGraticulePath() + drawGraticule() easy to omit at a new call site.
+function applyProjection() {
+    s.projection = buildProjection(activeProjection)
+    refreshGeoPath()
+    refreshGraticulePath()
+    if (networkActive) { drawLinks(); drawNodes() }
+    drawGraticule()
+    updateInfoPosition()
 }
 
 function selectProjection(name) {
@@ -125,12 +162,7 @@ function selectProjection(name) {
     document.querySelectorAll('#projection-menu button').forEach(b =>
         b.classList.toggle('active', b.dataset.name === name)
     )
-    s.projection = buildProjection(name)
-    refreshGeoPath()
-    refreshGraticulePath()
-    if (networkActive) { drawLinks(); drawNodes() }
-    drawGraticule()
-    updateInfoPosition()
+    applyProjection()
     updateConfigDisplay()
 }
 
@@ -145,7 +177,7 @@ function initProjectionPanel() {
         const header = document.createElement('div')
         header.className = 'menu-family'
         header.textContent = family
-        menuEntries.push({ el: header, isHeader: true })
+        menuEntries.push(header)
 
         names.forEach(name => {
             const button = document.createElement('button')
@@ -154,7 +186,7 @@ function initProjectionPanel() {
             button.dataset.name = name
             if (name === activeProjection) button.classList.add('active')
             button.addEventListener('click', () => selectProjection(name))
-            menuEntries.push({ el: button, isHeader: false })
+            menuEntries.push(button)
         })
     })
 
@@ -224,25 +256,44 @@ function initControls() {
 // Live in the #config panel, next to the projection name, rather than in
 // #controls — they describe what's currently shown, same as that panel's text.
 
+// data-action in index.html → the layer's visibility accessors. Adding a
+// layer is one row here, not another branch in the click handler.
+const LAYERS = {
+    graticule: { get: isGraticuleVisible, set: setGraticuleVisible },
+    links:     { get: isLinksVisible,     set: setLinksVisible },
+    nodes:     { get: isNodesVisible,     set: setNodesVisible },
+}
+
 function initConfigToggles() {
     const toggles = document.getElementById('config-toggles')
 
-    // Each button holds a label span plus a '.toggle-state' span — a click
-    // can land on either, so find the button itself rather than trusting
-    // e.target to be it directly.
-    function applyToggle(btn, next, setVisible) {
-        setVisible(next)
-        btn.classList.toggle('active', next)
-        btn.querySelector('.toggle-state').textContent = next ? 'on' : 'off'
-    }
-
     toggles.addEventListener('click', e => {
-        const btn    = e.target.closest('[data-action]')
-        const action = btn && btn.dataset.action
-        if (!action) return
-        if (action === 'graticule') applyToggle(btn, !isGraticuleVisible(), setGraticuleVisible)
-        else if (action === 'links') applyToggle(btn, !isLinksVisible(), setLinksVisible)
-        else if (action === 'nodes') applyToggle(btn, !isNodesVisible(), setNodesVisible)
+        // Each button holds a label span plus a '.toggle-state' span — a
+        // click can land on either, so find the button itself rather than
+        // trusting e.target to be it directly.
+        const btn   = e.target.closest('[data-action]')
+        const layer = btn && LAYERS[btn.dataset.action]
+        if (!layer) return
+
+        const next = !layer.get()
+        layer.set(next)
+        paintToggle(btn, next)
+    })
+}
+
+function paintToggle(btn, on) {
+    btn.classList.toggle('active', on)
+    btn.querySelector('.toggle-state').textContent = on ? 'on' : 'off'
+}
+
+// Called once the render modules exist, so the panel reports each layer's
+// real default instead of the one hardcoded in index.html — otherwise
+// flipping a default in links.js/nodes.js/graticule.js silently leaves the
+// panel claiming the opposite.
+function syncConfigToggles() {
+    document.querySelectorAll('#config-toggles [data-action]').forEach(btn => {
+        const layer = LAYERS[btn.dataset.action]
+        if (layer) paintToggle(btn, layer.get())
     })
 }
 
@@ -263,26 +314,26 @@ function setLoadingProgress({ step, label, pct }) {
 
 // ── Search UI ─────────────────────────────────────────────────────────────────
 
+// The panels that only make sense once a network exists. Flipped as one
+// set by all three overlay states, so a new network-only panel is added
+// here rather than in each of them.
+function setNetworkChrome(on) {
+    document.getElementById('search-overlay').hidden   = on
+    document.getElementById('query-chip').hidden       = !on
+    document.getElementById('config').hidden           = !on
+    document.getElementById('controls-actions').hidden = !on
+    document.getElementById('credit-title').disabled   = !on
+}
+
 function showSearchOverlay(errorMsg) {
-    document.getElementById('search-overlay').hidden    = false
-    document.getElementById('query-chip').hidden        = true
-    document.getElementById('config').hidden            = true
-    document.getElementById('controls-actions').hidden  = true
-    document.getElementById('credit-title').disabled    = true
+    setNetworkChrome(false)
     // Reset to idle state
     document.getElementById('search-label').hidden      = false
     document.getElementById('search-bar').hidden        = false
     document.getElementById('loading-list').hidden      = true
     document.getElementById('loading-bar-track').hidden = true
     document.getElementById('search-input').disabled   = false
-
-    const errEl = document.getElementById('search-error')
-    if (errorMsg) {
-        errEl.textContent = errorMsg
-        errEl.hidden = false
-    } else {
-        errEl.hidden = true
-    }
+    setSearchError(errorMsg)
 }
 
 // Inline error inside the search overlay, without resetting the rest of
@@ -298,11 +349,7 @@ function setSearchError(msg) {
 }
 
 function showLoadingOverlay(topic) {
-    document.getElementById('search-overlay').hidden    = false
-    document.getElementById('query-chip').hidden        = true
-    document.getElementById('config').hidden            = true
-    document.getElementById('controls-actions').hidden  = true
-    document.getElementById('credit-title').disabled    = true
+    setNetworkChrome(false)
     document.getElementById('search-label').hidden      = true
     document.getElementById('search-bar').hidden        = true
     document.getElementById('search-error').hidden      = true
@@ -317,12 +364,7 @@ function showLoadingOverlay(topic) {
 }
 
 function showQueryChip(topic) {
-    document.getElementById('search-overlay').hidden  = true
-    const chip = document.getElementById('query-chip')
-    chip.hidden = false
-    document.getElementById('config').hidden = false
-    document.getElementById('controls-actions').hidden = false
-    document.getElementById('credit-title').disabled = false
+    setNetworkChrome(true)
     document.getElementById('query-chip-label').textContent    = topic.display_name
     document.getElementById('query-chip-subfield').textContent = topic.subfield ? `subfield · ${topic.subfield}` : ''
 
@@ -509,13 +551,8 @@ function initSearch() {
 function relayout() {
     background()
     layoutProjectionMenu()
-    s.projection = buildProjection(activeProjection)
-    refreshGeoPath()
-    refreshGraticulePath()
     s.pixi.resize(window.innerWidth, window.innerHeight, window.innerWidth, window.innerHeight)
-    if (networkActive) { drawLinks(); drawNodes() }
-    drawGraticule()
-    updateInfoPosition()
+    applyProjection()
 }
 
 // ── Drag to rotate ────────────────────────────────────────────────────────────
@@ -527,16 +564,19 @@ function initDragToRotate() {
     let pending = false, pendingRotate = null, pendingDeltaQ = null
     let v0, initialPositions, moved, wasRunning
 
+    function applyPendingRotation() {
+        if (!pendingRotate || !initialPositions) return
+        s.nodes.forEach((node, i) => {
+            if (initialPositions[i]) node.spherical = pendingRotate(initialPositions[i])
+        })
+    }
+
     function scheduleRedraw() {
         if (pending) return
         pending = true
         requestAnimationFrame(() => {
-            if (pendingRotate && initialPositions) {
-                s.nodes.forEach((node, i) => {
-                    if (initialPositions[i]) node.spherical = pendingRotate(initialPositions[i])
-                })
-                pendingRotate = null
-            }
+            applyPendingRotation()
+            pendingRotate = null
             if (pendingDeltaQ) updateConfigRotation(versor.multiply(pendingDeltaQ, totalRotationQ))
             if (networkActive) { drawLinks(); drawNodes() }
             pending = false
@@ -569,11 +609,7 @@ function initDragToRotate() {
             })
             .on('end', event => {
                 canvas.style.cursor = 'grab'
-                if (pendingRotate && initialPositions) {
-                    s.nodes.forEach((node, i) => {
-                        if (initialPositions[i]) node.spherical = pendingRotate(initialPositions[i])
-                    })
-                }
+                applyPendingRotation()
                 if (pendingDeltaQ) {
                     totalRotationQ = versor.multiply(pendingDeltaQ, totalRotationQ)
                     updateConfigRotation()
@@ -610,15 +646,17 @@ function toggleChrome() {
     document.getElementById('chrome-toggle').textContent = hidden ? 'Show panels' : 'Hide panels'
 }
 
-document.getElementById('chrome-toggle').addEventListener('click', toggleChrome)
+function initChrome() {
+    document.getElementById('chrome-toggle').addEventListener('click', toggleChrome)
 
-window.addEventListener('keydown', e => {
-    if (e.key === 'Escape') selectNode(null)
-    // Ignore while typing — 'h' is a normal search-query character.
-    else if (e.key.toLowerCase() === 'h' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-        toggleChrome()
-    }
-})
+    window.addEventListener('keydown', e => {
+        if (e.key === 'Escape') selectNode(null)
+        // Ignore while typing — 'h' is a normal search-query character.
+        else if (e.key.toLowerCase() === 'h' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+            toggleChrome()
+        }
+    })
+}
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
@@ -627,6 +665,7 @@ window.addEventListener('keydown', e => {
     initControls()
     initConfigToggles()
     initSearch()
+    initChrome()
 
     s.projection = buildProjection(activeProjection)
 
@@ -635,13 +674,22 @@ window.addEventListener('keydown', e => {
     initNodes()
     initGraticule()
 
-    // Show the projection name from the first frame — previously this only
-    // populated once the user touched a control.
+    // Show the projection name and the layers' real defaults from the first
+    // frame — previously this only populated once the user touched a control.
     updateConfigDisplay()
+    syncConfigToggles()
 
     background()
 
-    window.addEventListener('resize', () => requestAnimationFrame(relayout))
+    // Coalesce bursts of resize events into one relayout per frame —
+    // relayout() rebuilds the projection and repaints everything, so
+    // running it twice for the same frame is pure waste.
+    let relayoutPending = false
+    window.addEventListener('resize', () => {
+        if (relayoutPending) return
+        relayoutPending = true
+        requestAnimationFrame(() => { relayoutPending = false; relayout() })
+    })
 
     initDragToRotate()
 

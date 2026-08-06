@@ -4,6 +4,8 @@
 
 import * as d3 from 'd3'
 import { isGraticuleVisible } from '../render/graticule'
+import { isLinksVisible } from '../render/links'
+import { isNodesVisible } from '../render/nodes'
 import {
     hasSelection, isLinkActive, isNeighbor, getSelected,
 } from './selection'
@@ -90,23 +92,27 @@ export function downloadSVG() {
         }
     }
 
-    // All links collapsed into one path with a MultiLineString
-    const lines = []
-    s.links.forEach(link => {
-        const a = link.source && link.source.spherical
-        const b = link.target && link.target.spherical
-        if (a && b) lines.push([a, b])
-    })
-    const linksD = path({ type: 'MultiLineString', coordinates: lines })
-    if (linksD) {
-        parts.push(
-            `<path d="${linksD}" fill="none" ` +
-            `stroke="black" stroke-opacity="0.3" stroke-width="0.5"/>`
-        )
+    // All links collapsed into one path with a MultiLineString. Gated on
+    // the same toggle as the screen — the sphere outline above is drawn
+    // regardless, matching links.js.
+    if (isLinksVisible()) {
+        const lines = []
+        s.links.forEach(link => {
+            const a = link.source && link.source.spherical
+            const b = link.target && link.target.spherical
+            if (a && b) lines.push([a, b])
+        })
+        const linksD = path({ type: 'MultiLineString', coordinates: lines })
+        if (linksD) {
+            parts.push(
+                `<path d="${linksD}" fill="none" ` +
+                `stroke="black" stroke-opacity="0.3" stroke-width="0.5"/>`
+            )
+        }
     }
 
     // Active links in red
-    if (hasSelection()) {
+    if (isLinksVisible() && hasSelection()) {
         const active = []
         s.links.forEach(link => {
             if (!isLinkActive(link)) return
@@ -124,18 +130,20 @@ export function downloadSVG() {
     }
 
     // All nodes
-    parts.push(`<g fill="black" fill-opacity="0.9">`)
-    s.nodes.forEach(node => {
-        if (!node.spherical) return
-        const pos = s.projection(node.spherical)
-        if (!pos) return
-        parts.push(
-            `<circle cx="${pos[0].toFixed(1)}" cy="${pos[1].toFixed(1)}" r="0.7"/>`
-        )
-    })
-    parts.push(`</g>`)
+    if (isNodesVisible()) {
+        parts.push(`<g fill="black" fill-opacity="0.9">`)
+        s.nodes.forEach(node => {
+            if (!node.spherical) return
+            const pos = s.projection(node.spherical)
+            if (!pos) return
+            parts.push(
+                `<circle cx="${pos[0].toFixed(1)}" cy="${pos[1].toFixed(1)}" r="0.7"/>`
+            )
+        })
+        parts.push(`</g>`)
+    }
 
-    if (hasSelection()) {
+    if (isNodesVisible() && hasSelection()) {
         // Neighbours
         parts.push(`<g fill="${HIGHLIGHT}">`)
         s.nodes.forEach(node => {

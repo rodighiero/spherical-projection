@@ -19,7 +19,8 @@
 // xyz points is visually indistinguishable from the true great-circle
 // arc, and — unlike lon/lat — it has no seam at ±180° longitude or pole
 // convergence to glitch across. lon/lat for drawing is then re-derived
-// from the blended xyz, exactly as surfaceForce() does in the worker.
+// here from the blended xyz — which is why the worker ships only x/y/z
+// and computes no lon/lat of its own.
 
 import { drawLinks } from '../render/links'
 import { drawNodes } from '../render/nodes'
@@ -52,7 +53,7 @@ function frame(now) {
 
     for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i]
-        const o = i * 5
+        const o = i * 3
         const x = a[o]     + (b[o]     - a[o])     * t
         const y = a[o + 1] + (b[o + 1] - a[o + 1]) * t
         const z = a[o + 2] + (b[o + 2] - a[o + 2]) * t
@@ -60,10 +61,14 @@ function frame(now) {
         n.y = y
         n.z = z
         const norm = Math.sqrt(x * x + y * y + z * z) || 1
-        n.spherical = [
-            Math.atan2(y, x) * 180 / Math.PI,
-            asin(z / norm)   * 180 / Math.PI,
-        ]
+        // Mutated in place rather than reassigned — this runs for every
+        // node on every frame, and a fresh pair per node per frame is
+        // pure garbage. Every reader only indexes [0]/[1]; the one place
+        // that retains the array across frames (initDragToRotate) already
+        // takes its own .slice().
+        const sp = n.spherical || (n.spherical = [0, 0])
+        sp[0] = Math.atan2(y, x) * 180 / Math.PI
+        sp[1] = asin(z / norm)   * 180 / Math.PI
     }
 
     // The graticule depends only on the projection, never on node

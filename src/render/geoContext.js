@@ -3,9 +3,10 @@
 // geodesic geometry through the same d3.geoPath + PIXI.Graphics pipeline).
 //
 // PIXI v8 has a ~65,535-vertex hard cap per accumulated path; exceeding it
-// silently truncates. d3.geoPath does not call context.beginPath() between
-// top-level geometries (confirmed empirically, not merely assumed from the
-// canvas-context convention), so without an explicit break here, every
+// silently truncates. d3-geo's PathContext only ever calls moveTo/lineTo/
+// arc/closePath — never beginPath() between top-level geometries (read off
+// d3-geo/src/path/context.js, not merely assumed from the canvas-context
+// convention), so without an explicit break here, every
 // feature drawn in one pass — e.g. every link in the network — accumulates
 // into a single continuous path with no natural flush point. Instead this
 // tracks the point count itself and flushes (stroke()) whenever it's about
@@ -29,10 +30,6 @@ export class PixiGeoContext {
         this._style = style
         this._pending = false
         this._points = 0
-    }
-
-    beginPath() {
-        if (this._pending) this._flush()
     }
 
     moveTo(x, y) {
@@ -59,9 +56,12 @@ export class PixiGeoContext {
         this._points = 0
     }
 
-    // d3.geoPath calls context.stroke()/fill() too, but committing is
-    // driven by flush()/beginPath() above so the caller controls exactly
-    // when a style change takes effect — these are no-ops.
+    // d3-geo's PathContext only ever calls moveTo/lineTo/arc/closePath, so
+    // these are never reached today — they exist so that a d3 version which
+    // did start calling them couldn't commit a half-built path behind the
+    // caller's back. Committing stays driven by flush() and the moveTo
+    // threshold above, so the caller controls when a style takes effect.
+    beginPath() { }
     stroke() { }
     fill() { }
 }

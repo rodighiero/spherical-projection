@@ -23,6 +23,17 @@ const STYLE_SPHERE = { width: 1, color: 0x000000, alpha: 0.5 }
 const STYLE_LINK = { width: 0.2, color: 0x000000, alpha: 1.0 }
 const STYLE_ACTIVE = { width: 0.6, color: HIGHLIGHT, alpha: 1.0 }
 
+// Reused for every link on every frame instead of allocating a fresh
+// object + array per link — d3.geoPath reads it synchronously and keeps
+// no reference, so one mutable instance is equivalent.
+const LINE = { type: 'LineString', coordinates: [null, null] }
+
+function drawArc(a, b) {
+    LINE.coordinates[0] = a
+    LINE.coordinates[1] = b
+    geoPath(LINE)
+}
+
 export function drawLinks() {
     stage.clear()
     if (!s.nodes.length) return
@@ -43,8 +54,7 @@ export function drawLinks() {
     s.links.forEach(link => {
         const a = link.source && link.source.spherical
         const b = link.target && link.target.spherical
-        if (!a || !b) return
-        geoPath({ type: 'LineString', coordinates: [a, b] })
+        if (a && b) drawArc(a, b)
     })
     pixiCtx.flush()
 
@@ -56,8 +66,7 @@ export function drawLinks() {
         if (!isLinkActive(link)) return
         const a = link.source && link.source.spherical
         const b = link.target && link.target.spherical
-        if (!a || !b) return
-        geoPath({ type: 'LineString', coordinates: [a, b] })
+        if (a && b) drawArc(a, b)
     })
     pixiCtx.flush()
 }
