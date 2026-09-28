@@ -2,6 +2,8 @@
 // (computed once on selection from s.links). Drawing modules read
 // this state to know what to emphasise vs fade.
 
+import { projectVisible } from './projection'
+
 let selected = null
 const neighborIds = new Set()
 
@@ -40,7 +42,7 @@ export function findNodeAt(x, y, threshold = 12) {
     let bestDist = threshold * threshold
     for (const node of s.nodes) {
         if (!node.spherical) continue
-        const p = s.projection(node.spherical)
+        const p = projectVisible(node.spherical)
         if (!p) continue
         const dx = p[0] - x
         const dy = p[1] - y

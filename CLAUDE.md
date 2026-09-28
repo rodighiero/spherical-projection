@@ -53,6 +53,8 @@ After a drag-to-rotate, `syncPositions()` converts `node.spherical` back to Cart
 
 `src/core/projection.js` **auto-discovers** every `geo*` function in `d3` and `d3-geo-projection` at startup by probing for `fitExtent()` and `scale()`. The resulting ~90 projections are sorted alphabetically into the `PROJECTIONS` map. `buildProjection(name)` fits the chosen projection to the window with a UI-aware margin (clearing the projection menu at top and the controls panel at bottom), and coarsens `.precision()` to 2px — d3.geoPath's default resamples great-circle links far finer than their 0.2–0.6px stroke width can show, and the coarser threshold measurably cuts the vertex count `links.js` has to push through PIXI every frame.
 
+Every built projection then goes through `clipToOutline()` (`src/core/outlineClip.js`): its `stream` is wrapped so every line (links, graticule, SVG export) is clipped in screen space to the projection's own Sphere outline. d3 never cuts lines at the interruptions of Berghaus, the polyhedral and `interrupted*` projections, Gingery, Healpix, etc. — without this, a link crossing a cut is drawn straight across the gap, and Armadillo draws its cut-away southern cap far below the map. Nodes use `projectVisible()` for the same outline test, so hidden nodes are neither drawn nor clickable.
+
 ### Data / API
 
 `src/core/fetcher.js` queries the [OpenAlex API](https://api.openalex.org) live:

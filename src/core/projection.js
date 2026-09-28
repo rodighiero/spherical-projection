@@ -2,6 +2,7 @@
 
 import * as d3  from 'd3'
 import * as d3p from 'd3-geo-projection'
+import { outlineClip } from './outlineClip.js'
 
 // ── Dynamic projection discovery ─────────────────────────────────────────────
 
@@ -115,5 +116,31 @@ export function buildProjection(name) {
     // weight. Not every discovered projection factory exposes it.
     if (typeof projection.precision === 'function') projection.precision(2)
 
+    return clipToOutline(projection)
+}
+
+// Routes every stream — links, graticule, the SVG export — through
+// outlineClip (see there for why d3 alone leaves lines drawn across the cuts
+// of interrupted projections), and exposes the same outline test for points
+// as projection.outlineContains([x, y]). Must run after every setting that
+// moves the outline (fit, clipExtent, precision), since it measures it once.
+export function clipToOutline(projection) {
+    const clip = outlineClip(projection)
+    if (!clip) {
+        projection.outlineContains = () => true
+        return projection
+    }
+    const stream = projection.stream
+    projection.stream = sink => stream.call(projection, clip.wrap(sink))
+    projection.outlineContains = ([x, y]) => clip.contains(x, y)
     return projection
+}
+
+// s.projection(coords) for a point that should actually be drawn, or null
+// when it lands outside the outline — e.g. Armadillo's cut-away southern
+// cap, which still projects, just below the map. Nodes and their hit-test
+// go through this, so what's drawn and what's clickable always agree.
+export function projectVisible(coords) {
+    const p = s.projection(coords)
+    return p && s.projection.outlineContains(p) ? p : null
 }
