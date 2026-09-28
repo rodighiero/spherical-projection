@@ -71,6 +71,10 @@ const permalink = readPermalink()
 
 let activeProjection = permalink.projection || loadLastProjection()
 
+// With a topic in the link, don't flash the search panel while Pixi starts
+// and the topic resolves — openPermalinkTopic() brings it back on failure.
+if (permalink.topicSlug) document.getElementById('search-overlay').hidden = true
+
 // Matches the button min-width / column-gap / padding the CSS layout is
 // built against — keep in sync with #projection-menu and
 // #projection-menu .menu-column in index.css. Padding is subtracted
@@ -468,17 +472,21 @@ async function runQuery(topic, rotation) {
 // ── Deep link ─────────────────────────────────────────────────────────────────
 
 // The URL only carries the topic's slug (see permalink.js), so look it up by
-// name and keep the result whose own slug matches exactly. No match, or a
-// failed lookup, leaves the search overlay up as if there were no link.
+// name and keep the result whose own slug matches exactly. Returns false on
+// no match or a failed lookup, so the caller opens search as if there were
+// no link.
 async function openPermalinkTopic() {
     const slug = permalink.topicSlug
-    if (!slug) return
+    if (!slug) return false
     try {
         const topics = await searchTopics(slug.replace(/-/g, ' '))
         const topic  = topics.find(t => slugify(t.display_name) === slug)
-        if (topic) runQuery(topic, permalink.rotation)
+        if (!topic) return false
+        runQuery(topic, permalink.rotation)
+        return true
     } catch (err) {
         console.error(err)
+        return false
     }
 }
 
@@ -731,7 +739,8 @@ function initChrome() {
 
     initDragToRotate()
 
-    showSearchOverlay()
-    document.getElementById('search-input').focus()
-    openPermalinkTopic()
+    if (!await openPermalinkTopic()) {
+        showSearchOverlay()
+        document.getElementById('search-input').focus()
+    }
 })()
