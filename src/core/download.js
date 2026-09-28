@@ -12,6 +12,7 @@ import {
     hasSelection, isLinkActive, isNeighbor, getSelected,
 } from './selection'
 import { HIGHLIGHT_CSS as HIGHLIGHT } from './theme'
+import { slugify, formatAngle } from './permalink'
 
 // ISO A3 landscape (420 x 297mm) at 300dpi — the resolution target for
 // exports, independent of how many CSS pixels the browser window happens to
@@ -171,21 +172,15 @@ export function downloadSVG() {
     triggerDownload(blob, fileName('svg'))
 }
 
-function slugify(str) {
-    return str
-        .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')   // strip accents
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-}
-
+// Same slugs and angle formatting as the deep-link URL (permalink.js), so a
+// file name maps directly onto the link that reopens its view.
 function fileName(ext) {
     const parts = []
     if (s.topic && s.topic.display_name) parts.push(slugify(s.topic.display_name))
     if (s.projectionName) parts.push(slugify(s.projectionName))
     if (s.rotation) {
         const [lambda, phi] = s.rotation
-        parts.push(`lon${lambda.toFixed(1)}_lat${phi.toFixed(1)}`)
+        parts.push(`lon${formatAngle(lambda)}_lat${formatAngle(phi)}`)
     }
     return `${parts.join('_') || 'export'}.${ext}`
 }

@@ -25,6 +25,7 @@ import { setSelected, findNodeAt, endpointId } from './core/selection.js'
 import { setInfoContent, updateInfoPosition } from './core/info.js'
 import { downloadPNG, downloadSVG } from './core/download.js'
 import { fetchNetwork, searchTopics } from './core/fetcher.js'
+import { readPermalink, writePermalink, slugify } from './core/permalink.js'
 
 // Global state
 
@@ -64,7 +65,11 @@ function loadLastProjection() {
     }
 }
 
-let activeProjection = loadLastProjection()
+// A deep link's parameters win over the remembered projection; anything
+// missing or invalid in it is null here and falls back to the usual default.
+const permalink = readPermalink()
+
+let activeProjection = permalink.projection || loadLastProjection()
 
 // Matches the button min-width / column-gap / padding the CSS layout is
 // built against — keep in sync with #projection-menu and
@@ -168,6 +173,7 @@ function selectProjection(name) {
     )
     applyProjection()
     updateConfigDisplay()
+    writePermalink()
 }
 
 function initProjectionPanel() {
@@ -409,7 +415,8 @@ function showQueryChip(topic) {
 
 // ── Network launch ────────────────────────────────────────────────────────────
 
-function loadNetwork(nodes, links) {
+// rotation: [lon, lat] to open on — a deep link's view, else unrotated.
+function loadNetwork(nodes, links, rotation = [0, 0]) {
     // Resolve link source/target IDs to node object references.
     const byId = new Map(nodes.map(n => [n.id, n]))
     s.nodes = nodes
@@ -426,14 +433,16 @@ function loadNetwork(nodes, links) {
     drawGraticule()
 
     // A freshly (re)loaded network's Fibonacci-sphere seed is the new
-    // "initial position" the rotation offset is measured from.
-    totalRotationQ = [1, 0, 0, 0]
+    // "initial position" the rotation offset is measured from — the worker
+    // starts that seed already turned by `rotation`, so the offset begins
+    // there rather than at identity.
+    totalRotationQ = versor([rotation[0], rotation[1], 0])
     updateConfigRotation()
 
     if (networkActive) {
-        resetSimulation()
+        resetSimulation(rotation)
     } else {
-        simulation()
+        simulation(rotation)
         networkActive = true
     }
 }
@@ -441,17 +450,35 @@ function loadNetwork(nodes, links) {
 // ── Search submission ─────────────────────────────────────────────────────────
 
 // topic is { id, display_name } as returned by searchTopics
-async function runQuery(topic) {
+async function runQuery(topic, rotation) {
     clearTopicList()
     showLoadingOverlay(topic)
     try {
         const { nodes, links } = await fetchNetwork(topic, setLoadingProgress)
-        loadNetwork(nodes, links)
+        loadNetwork(nodes, links, rotation)
         s.topic = topic
         showQueryChip(topic)
+        writePermalink()
     } catch (err) {
         console.error(err)
         showSearchOverlay(err.message || 'Something went wrong. Try again.')
+    }
+}
+
+// ── Deep link ─────────────────────────────────────────────────────────────────
+
+// The URL only carries the topic's slug (see permalink.js), so look it up by
+// name and keep the result whose own slug matches exactly. No match, or a
+// failed lookup, leaves the search overlay up as if there were no link.
+async function openPermalinkTopic() {
+    const slug = permalink.topicSlug
+    if (!slug) return
+    try {
+        const topics = await searchTopics(slug.replace(/-/g, ' '))
+        const topic  = topics.find(t => slugify(t.display_name) === slug)
+        if (topic) runQuery(topic, permalink.rotation)
+    } catch (err) {
+        console.error(err)
     }
 }
 
@@ -538,7 +565,9 @@ function initSearch() {
         pause()
         s.nodes = []
         s.links = []
+        s.topic = null
         networkActive = false
+        writePermalink()
         setSelected(null)
         setInfoContent(null)
         background()
@@ -620,6 +649,7 @@ function initDragToRotate() {
                 if (pendingDeltaQ) {
                     totalRotationQ = versor.multiply(pendingDeltaQ, totalRotationQ)
                     updateConfigRotation()
+                    writePermalink()
                 }
                 initialPositions = null
                 pendingRotate = null
@@ -703,4 +733,5 @@ function initChrome() {
 
     showSearchOverlay()
     document.getElementById('search-input').focus()
+    openPermalinkTopic()
 })()

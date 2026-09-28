@@ -20,6 +20,7 @@
 // rate results, so the worker no longer needs to pace itself at all.
 
 import * as force3D from 'd3-force-3d'
+import { geoRotation } from 'd3-geo'
 import { sphereRadius } from './sphere'
 
 let nodes = null
@@ -49,6 +50,22 @@ self.onmessage = (e) => {
                 nodes[i].x  = R * Math.sin(theta) * Math.cos(phi)
                 nodes[i].y  = R * Math.sin(theta) * Math.sin(phi)
                 nodes[i].z  = R * Math.cos(theta)
+            }
+
+            // A deep link's lon/lat (see permalink.js) rotates the seed
+            // itself rather than the settled layout: the forces are all
+            // rotation-invariant, so the network converges to the same
+            // shape it would have reached unrotated and then been dragged
+            // there — without visibly snapping round once it cools.
+            if (msg.rotation && (msg.rotation[0] || msg.rotation[1])) {
+                const rotate = geoRotation(msg.rotation)
+                const deg = 180 / Math.PI, rad = Math.PI / 180
+                for (const n of nodes) {
+                    const [lon, lat] = rotate([Math.atan2(n.y, n.x) * deg, Math.asin(n.z / R) * deg])
+                    n.x = R * Math.cos(lat * rad) * Math.cos(lon * rad)
+                    n.y = R * Math.cos(lat * rad) * Math.sin(lon * rad)
+                    n.z = R * Math.sin(lat * rad)
+                }
             }
 
             sim = force3D.forceSimulation()

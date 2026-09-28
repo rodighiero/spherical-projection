@@ -116,11 +116,12 @@ function spawnWorker() {
     }
 }
 
-function initWorker() {
+function initWorker(rotation) {
     // Strip references that won't survive structured cloning, then ship
     // a clean copy of nodes and links into the worker.
     worker.postMessage({
         type: 'init',
+        rotation,
         nodes: s.nodes.map(n => ({ id: n.id })),
         links: s.links.map(l => ({
             source: endpointId(l.source),
@@ -130,17 +131,19 @@ function initWorker() {
     })
 }
 
-export function simulation() {
+// rotation: optional [lon, lat] in degrees the seed layout starts turned by
+// (a deep link's view — see permalink.js).
+export function simulation(rotation) {
     spawnWorker()
-    initWorker()
+    initWorker(rotation)
 }
 
 // Reset with a completely new dataset — terminates the current worker and
 // starts a fresh one. Call after updating s.nodes and s.links.
-export function resetSimulation() {
+export function resetSimulation(rotation) {
     lastAlpha = 1
     spawnWorker()
-    initWorker()
+    initWorker(rotation)
 }
 
 // Controls — fire-and-forget messages. We track alpha locally so

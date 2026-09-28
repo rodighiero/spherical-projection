@@ -24,6 +24,20 @@ Drag anywhere to rotate the perspective — horizontal moves the longitude, vert
 
 Click a node to pin an info card with the author's institution, output, and topics, plus their OpenAlex page; its co-authors and their links highlight in red. Escape clears the selection.
 
+## Links
+
+Every view has its own URL, so a printed caption can point straight to it:
+
+```
+https://rodighiero.github.io/spherical-projection/?topic=machine-learning-and-algorithms&projection=peirce-quincuncial&lon=0&lat=0
+```
+
+- `topic` — the OpenAlex topic name as a lowercase, hyphenated slug; the network loads straight away, skipping the search
+- `projection` — the projection name, slugged the same way (`peirce-quincuncial`, `azimuthal-equal-area`, …)
+- `lon`, `lat` — the sphere's rotation in degrees, default `0`
+
+The parameters match the exported file names: `machine-learning-and-algorithms_peirce-quincuncial_lon0.0_lat0.0.png` opens with the link above. The address bar follows along as you switch topic, change projection, or rotate the sphere, so whatever is on screen can be copied and shared. A link's projection takes precedence over the one remembered from your last visit, and a missing or unrecognised value falls back to the usual behaviour. The layout itself is recomputed on every load, so a link reopens the same topic, projection and orientation, but not the exact node positions of the original figure.
+
 ## Run
 
 ```sh
