@@ -103,23 +103,33 @@ async function get(url) {
     throw lastError
 }
 
+// Thrown by pages() when a query matches more records than keyless paging
+// can reach, so the caller can narrow it instead of silently losing the rest.
+class TooManyRecords extends Error {
+    constructor(count) { super(`OpenAlex: ${count} records, over the ${MAX_RECORDS} reachable without an API key`) }
+}
+
 // Yields each page's results for a paged OpenAlex query. OpenAlex requires
 // an API key for cursor= paging past the first page (401 "API key required
 // for cursor paging"), so this uses plain page= paging, which works keyless
 // but only reaches the first MAX_RECORDS records of any one query. Stops on
 // meta.count rather than a short page, so an exact multiple of PAGE_SIZE
 // doesn't cost an extra empty request.
-async function* pages(url) {
+//
+// A query matching more than MAX_RECORDS throws TooManyRecords before
+// yielding anything, unless `truncate` is set: then it yields the first
+// MAX_RECORDS (fine for a caller that only wants the top N anyway) and
+// warns if paging actually runs into the cap.
+async function* pages(url, { truncate = false } = {}) {
     for (let page = 1; ; page++) {
         const data    = await get(`${url}&per_page=${PAGE_SIZE}&page=${page}`)
         const results = data.results ?? []
         const count   = data.meta?.count ?? 0
+        if (page === 1 && count > MAX_RECORDS && !truncate) throw new TooManyRecords(count)
         if (results.length) yield results
         if (!results.length || page * PAGE_SIZE >= count) return
         if (page * PAGE_SIZE >= MAX_RECORDS) {
-            // Only reached when the caller wanted everything — a caller that
-            // breaks early (fetchAuthors) never gets here.
-            console.warn(`OpenAlex: ${count} records, only the first ${MAX_RECORDS} are reachable without an API key: ${url}`)
+            console.warn(`OpenAlex: ${count} records, only the first ${MAX_RECORDS} were fetched: ${url}`)
             return
         }
     }
@@ -162,7 +172,9 @@ async function fetchAuthors(topicId, onProgress) {
 
     const baseUrl = `${BASE}/authors?filter=topics.id:${topicId}&sort=cited_by_count:desc&select=${select}`
 
-    for await (const results of pages(baseUrl)) {
+    // Only the top MAX_AUTHORS are wanted, so a topic with more authors than
+    // paging can reach is fine — truncate rather than throw.
+    for await (const results of pages(baseUrl, { truncate: true })) {
         authors.push(...results)
 
         const pct = 5 + Math.min(24, Math.round(authors.length / MAX_AUTHORS * 24))
@@ -181,6 +193,13 @@ async function fetchAuthors(topicId, onProgress) {
 // way fixed rounds of CONCURRENCY batches did. A shared seenWorkIds set
 // ensures each work is processed exactly once even when it appears in multiple
 // batches (co-authored by people from different batches).
+//
+// A batch matching more works than keyless paging can reach is split in half
+// and both halves re-queued, rather than losing the works past the cap. Only
+// a single author over the cap on their own is truncated.
+//
+// The first failure stops every worker: none picks up another batch or page,
+// and no further progress is reported over the error the caller shows.
 
 async function fetchCoauthorships(topicId, authors, onProgress) {
     const authorSet  = new Set(authors.map(a => a.id))
@@ -193,30 +212,22 @@ async function fetchCoauthorships(topicId, authors, onProgress) {
     }
 
     let doneBatches = 0
+    let failed = false
 
     async function processBatch(batch) {
         const ids  = batch.map(a => shortId(a.id)).join('|')
         const base = `${BASE}/works?filter=topics.id:${topicId},author.id:${ids}&select=id,authorships`
 
-        for await (const results of pages(base)) {
-            for (const work of results) {
-                if (seenWorkIds.has(work.id)) continue
-                seenWorkIds.add(work.id)
-
-                const present = (work.authorships || [])
-                    .map(a => a.author?.id)
-                    .filter(id => id && authorSet.has(id))
-
-                if (present.length < 2) continue
-
-                for (let i = 0; i < present.length; i++) {
-                    for (let j = i + 1; j < present.length; j++) {
-                        const a = present[i], b = present[j]
-                        const key = a < b ? `${a}§${b}` : `${b}§${a}`
-                        edgeMap.set(key, (edgeMap.get(key) || 0) + 1)
-                    }
-                }
+        try {
+            for await (const results of pages(base, { truncate: batch.length === 1 })) {
+                if (failed) return
+                processWorks(results)
             }
+        } catch (err) {
+            if (!(err instanceof TooManyRecords)) throw err
+            const half = batch.length >> 1
+            batches.push(batch.slice(0, half), batch.slice(half))
+            return
         }
 
         doneBatches++
@@ -228,9 +239,35 @@ async function fetchCoauthorships(topicId, authors, onProgress) {
         })
     }
 
+    function processWorks(results) {
+        for (const work of results) {
+            if (seenWorkIds.has(work.id)) continue
+            seenWorkIds.add(work.id)
+
+            const present = (work.authorships || [])
+                .map(a => a.author?.id)
+                .filter(id => id && authorSet.has(id))
+
+            if (present.length < 2) continue
+
+            for (let i = 0; i < present.length; i++) {
+                for (let j = i + 1; j < present.length; j++) {
+                    const a = present[i], b = present[j]
+                    const key = a < b ? `${a}§${b}` : `${b}§${a}`
+                    edgeMap.set(key, (edgeMap.get(key) || 0) + 1)
+                }
+            }
+        }
+    }
+
     let next = 0
     async function worker() {
-        while (next < batches.length) await processBatch(batches[next++])
+        try {
+            while (!failed && next < batches.length) await processBatch(batches[next++])
+        } catch (err) {
+            failed = true
+            throw err
+        }
     }
     await Promise.all(Array.from({ length: CONCURRENCY }, worker))
 
