@@ -3,8 +3,11 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   root: 'src',
   // Relative so the same build works at any path: the dev server at
-  // localhost:5173/ and GitHub Pages at /spherical-projection/.
+  // localhost:8000/ and GitHub Pages at /spherical-projection/.
   base: './',
+  server: {
+    port: 8000,
+  },
   worker: {
     rolldownOptions: {
       output: {

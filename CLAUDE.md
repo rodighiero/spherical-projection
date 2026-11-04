@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```sh
-npm start          # dev server at http://localhost:5173 (Vite, hot reload)
+npm start          # dev server at http://localhost:8000 (Vite, hot reload)
 npm run build      # production bundle → dist/ (gitignored; CI publishes it)
 ```
 
@@ -69,4 +69,4 @@ Vite writes everything to `dist/`, which is gitignored — `.github/workflows/de
 
 Vite 8 bundles with Rolldown rather than Rollup, so the config uses `build.rolldownOptions` / `worker.rolldownOptions`. `package.json` sets `"type": "module"` so `vite.config.js` is loaded as ESM.
 
-`base: './'` emits relative asset URLs, so one build serves both the dev server at `localhost:5173/` and GitHub Pages at `/spherical-projection/`. Don't hard-code an absolute base — it breaks whichever of the two it isn't set for.
+`base: './'` emits relative asset URLs, so one build serves both the dev server at `localhost:8000/` and GitHub Pages at `/spherical-projection/`. Don't hard-code an absolute base — it breaks whichever of the two it isn't set for.
