@@ -182,16 +182,18 @@ function surfaceForce(R) {
             if (node.fy != null) node.y = node.fy
             if (node.fz != null) node.z = node.fz
 
-            node.norm = Math.sqrt(node.x ** 2 + node.y ** 2 + node.z ** 2) || 1
+            const norm = Math.sqrt(node.x ** 2 + node.y ** 2 + node.z ** 2) || 1
 
             // Pull node toward sphere surface of radius R
-            const f = (1 + R / node.norm) / 2
+            const f = (1 + R / norm) / 2
             node.x *= f
             node.y *= f
             node.z *= f
 
-            // Constrain velocity to tangent plane
-            const sp = (node.vx * node.x + node.vy * node.y + node.vz * node.z) / node.norm ** 2
+            // Constrain velocity to tangent plane — against the scaled
+            // position, whose length is norm * f, so the radial component
+            // is removed exactly rather than scaled by f².
+            const sp = (node.vx * node.x + node.vy * node.y + node.vz * node.z) / (norm * f) ** 2
             node.vx -= node.x * sp
             node.vy -= node.y * sp
             node.vz -= node.z * sp

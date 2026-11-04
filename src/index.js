@@ -18,7 +18,7 @@ import {
     setGraticuleVisible, isGraticuleVisible,
 } from './render/graticule.js'
 import background from './render/background'
-import { simulation, resetSimulation, addTime, restart, pause, resume, resumeQuiet, isRunning, syncPositions } from './core/simulation'
+import { simulation, resetSimulation, addTime, restart, pause, resume, resumeQuiet, isRunning, syncPositions, onRunningChange } from './core/simulation'
 import { PROJECTIONS, buildProjection, PANEL_MARGIN_PERCENT } from './core/projection.js'
 import { FAMILY_ORDER, familyOf } from './core/projectionFamilies.js'
 import { setSelected, findNodeAt, endpointId } from './core/selection.js'
@@ -247,22 +247,19 @@ function initControls() {
     const controls  = document.getElementById('controls')
     const toggleBtn = controls.querySelector('[data-action="toggle"]')
 
+    // The label tracks the simulation's real state rather than the last
+    // click, so Restart, a new network, or cooling down keep it honest.
+    onRunningChange(running => {
+        toggleBtn.textContent = running ? 'Pause' : 'Resume'
+        toggleBtn.classList.toggle('paused', !running)
+    })
+
     controls.addEventListener('click', e => {
         const action = e.target.dataset && e.target.dataset.action
         if (!action) return
         if (action === 'add')          addTime()
         else if (action === 'restart') restart()
-        else if (action === 'toggle') {
-            if (isRunning()) {
-                pause()
-                toggleBtn.textContent = 'Resume'
-                toggleBtn.classList.add('paused')
-            } else {
-                resume()
-                toggleBtn.textContent = 'Pause'
-                toggleBtn.classList.remove('paused')
-            }
-        }
+        else if (action === 'toggle') isRunning() ? pause() : resume()
         else if (action === 'download-png') downloadPNG()
         else if (action === 'download-svg') downloadSVG()
     })
@@ -493,9 +490,11 @@ async function openPermalinkTopic() {
 // ── Topic list helpers ────────────────────────────────────────────────────────
 
 let _liveTopics = []   // last fetched topic results
+let _liveQuery  = null // the query _liveTopics answers
 
-function renderTopicList(topics) {
+function renderTopicList(topics, query) {
     _liveTopics = topics
+    _liveQuery  = query
     const list = document.getElementById('topic-list')
     list.innerHTML = ''
     if (!topics.length) { list.hidden = true; return }
@@ -522,6 +521,7 @@ function renderTopicList(topics) {
 
 function clearTopicList() {
     _liveTopics = []
+    _liveQuery  = null
     const list = document.getElementById('topic-list')
     list.innerHTML = ''
     list.hidden = true
@@ -532,18 +532,21 @@ function initSearch() {
     const submit = document.getElementById('search-submit')
     const titleBtn = document.getElementById('credit-title')
 
-    // Live search — debounced 300 ms
+    // Live search — debounced 300 ms. `seq` lets go() invalidate a lookup
+    // already in flight, so its list can't pop up over the loading overlay.
     let debounce = null
+    let seq = 0
     input.addEventListener('input', () => {
         clearTimeout(debounce)
         setSearchError(null)
         const q = input.value.trim()
         if (!q) { clearTopicList(); return }
         debounce = setTimeout(async () => {
+            const mine = ++seq
             try {
                 const topics = await searchTopics(q)
                 // Only render if the input still matches (user may have kept typing)
-                if (input.value.trim() === q) renderTopicList(topics)
+                if (mine === seq && input.value.trim() === q) renderTopicList(topics, q)
             } catch (err) {
                 // Without this a failed lookup is indistinguishable from
                 // "no matches" — which is exactly wrong when the real cause
@@ -556,9 +559,27 @@ function initSearch() {
         }, 300)
     })
 
-    // Enter / submit — pick the first result in the live list
-    function go() {
-        if (_liveTopics.length) runQuery(_liveTopics[0])
+    // Enter / submit — pick the first result for what's in the box now. The
+    // live list only answers the current text once the debounce has run; on
+    // an Enter inside that window it still holds the previous query's
+    // topics, so look the current text up directly instead.
+    async function go() {
+        const q = input.value.trim()
+        if (!q) return
+        if (q === _liveQuery) {
+            if (_liveTopics.length) runQuery(_liveTopics[0])
+            return
+        }
+        clearTimeout(debounce)
+        const mine = ++seq
+        try {
+            const topics = await searchTopics(q)
+            if (mine !== seq || input.value.trim() !== q) return
+            if (topics.length) runQuery(topics[0])
+            else renderTopicList(topics, q)
+        } catch (err) {
+            if (mine === seq) setSearchError(err.message || 'Search failed. Try again.')
+        }
     }
     // mousedown would blur the input and clear _liveTopics before the
     // click lands, so suppress it — same trick as the list items above.

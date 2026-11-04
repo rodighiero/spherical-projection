@@ -21,6 +21,15 @@ import { projectVisible } from './projection'
 // least this sharp on both dimensions regardless of window aspect ratio.
 const A3_LANDSCAPE_PX = { w: 4961, h: 3508 }
 
+// Ceilings the A3 target is clamped to. A narrow or portrait window would
+// otherwise ask for a render far past them (a 375×667 phone: ~4961×8810,
+// 44M px), and extract / toBlob then fail with nothing downloaded. 8192 is
+// the common GPU max texture size. 16 777 216 is iOS Safari's canvas area
+// limit — applied only on touch devices, since A3 itself (17.4M px) is just
+// over it and desktop browsers allow far more.
+const MAX_SIDE_PX   = 8192
+const MAX_CANVAS_PX = navigator.maxTouchPoints > 0 ? 16000000 : Infinity  // margin under the limit for rounding
+
 function windowFrame() {
     return { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }
 }
@@ -38,7 +47,11 @@ function triggerDownload(blob, filename) {
 
 export function downloadPNG() {
     const { x, y, w, h } = windowFrame()
-    const resolution = Math.max(A3_LANDSCAPE_PX.w / w, A3_LANDSCAPE_PX.h / h)
+    const resolution = Math.min(
+        Math.max(A3_LANDSCAPE_PX.w / w, A3_LANDSCAPE_PX.h / h),
+        MAX_SIDE_PX / Math.max(w, h),
+        Math.sqrt(MAX_CANVAS_PX / (w * h)),
+    )
 
     // extract.canvas does its own offscreen render pass at the requested
     // resolution — decoupled from the live PIXI canvas, so this can exceed

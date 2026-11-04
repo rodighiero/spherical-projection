@@ -43,6 +43,18 @@ let lastAlpha = 1
 // bump it — so anything sent before them is recognisably stale and dropped.
 let epoch = 0
 
+// Pause/Resume button hook: called with isRunning() whenever it changes —
+// on controls, new networks, and the simulation cooling down by itself.
+let runningListener = null
+let lastRunning = null
+export function onRunningChange(fn) { runningListener = fn; notifyRunning() }
+function notifyRunning() {
+    const r = isRunning()
+    if (r === lastRunning) return
+    lastRunning = r
+    runningListener && runningListener(r)
+}
+
 function post(msg, transfer) {
     worker && worker.postMessage({ ...msg, epoch }, transfer)
 }
@@ -115,6 +127,7 @@ function spawnWorker() {
         if (msg.type !== 'tick' || msg.epoch !== epoch) return
 
         lastAlpha = msg.alpha
+        notifyRunning()
 
         // First tick ever has nothing to interpolate from — start flat.
         prevBuf = nextBuf ?? msg.positions
@@ -155,6 +168,7 @@ export function simulation(rotation) {
 // starts a fresh one. Call after updating s.nodes and s.links.
 export function resetSimulation(rotation) {
     lastAlpha = 1
+    notifyRunning()
     spawnWorker()
     initWorker(rotation)
 }
@@ -162,10 +176,10 @@ export function resetSimulation(rotation) {
 // Controls — fire-and-forget messages. We track alpha locally so
 // isRunning() stays synchronous for the Pause/Resume button.
 
-export function addTime() { post({ type: 'addTime' }); lastAlpha = 0.4 }
-export function restart() { post({ type: 'restart' }); lastAlpha = 1 }
-export function pause()   { epoch++; post({ type: 'pause' }); lastAlpha = 0 }
-export function resume()  { post({ type: 'resume' });  lastAlpha = Math.max(lastAlpha, 0.3) }
+export function addTime() { post({ type: 'addTime' }); lastAlpha = 0.4; notifyRunning() }
+export function restart() { post({ type: 'restart' }); lastAlpha = 1;   notifyRunning() }
+export function pause()   { epoch++; post({ type: 'pause' }); lastAlpha = 0; notifyRunning() }
+export function resume()  { post({ type: 'resume' });  lastAlpha = Math.max(lastAlpha, 0.3); notifyRunning() }
 export function resumeQuiet() { post({ type: 'resumeQuiet' }) }
 export function isRunning() { return lastAlpha > 0.001 }
 
