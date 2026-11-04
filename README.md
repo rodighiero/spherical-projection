@@ -16,7 +16,7 @@ The argument is laid out in full in [Drawing Network Visualizations on a Continu
 
 Six years later, in the summer of 2026, the 2020 visualization was rebuilt from scratch in five working sessions with an AI — Claude Code, a chat in the terminal — without its author writing a single line of code. The machine wrote the code; the designer chose among its proposals, refused what went against the work's principles, and answered for the result. The nearly ninety projections are one such refusal: offered a tidier interface with only fifteen, the designer kept them all, because a work about removing margins should not quietly drop its own.
 
-The rebuild, and what it says about authorship when design and making come apart, is the subject of [Design Without Hands: Rebuilding a Web Application with AI](https://doi.org/10.82068/pgjournal.2026.23.42.13) (_Progettare senza mani: ricostruire un'applicazione web con l'IA_), Dario Rodighiero, _Progetto Grafico_ 43 — a forthcoming bilingual essay in Italian and English, illustrated with eight views of the same co-authorship network on machine learning, each captioned with the link that reopens it here.
+The rebuild, and what it says about authorship when design and making come apart, is the subject of [Design Without Hands: Rebuilding a Web Application with AI](https://doi.org/10.82068/pgjournal.2026.23.43.13) (_Progettare senza mani: ricostruire un'applicazione web con l'IA_), Dario Rodighiero, _Progetto Grafico_ 43, 2026 — a bilingual essay in Italian and English, illustrated with eight views of the same co-authorship network on machine learning, each captioned with the link that reopens it here. It is [open access](https://pgjournal.aiap.it/index.php/pgj/article/view/2026.23.43.13) on the journal's site under a CC BY-NC-SA 4.0 licence.
 
 ## How it works
 
@@ -61,16 +61,18 @@ Type any research topic into the search bar — the app queries the [OpenAlex AP
 
 The original argument:
 
-> Rodighiero, D. (2020). _Drawing Network Visualizations on a Continuous, Spherical Surface._ In 2020 24th International Conference Information Visualisation (IV), pp. 573–580. IEEE. https://doi.org/10.1109/IV51561.2020.00097
+> Rodighiero, Dario. 2020. “Drawing Network Visualizations on a Continuous, Spherical Surface.” _Proceedings of the 24th International Conference Information Visualisation (IV)_, 573–80. https://doi.org/10.1109/IV51561.2020.00097.
 
 Open-access PDF, courtesy of the University of Groningen: https://pure.rug.nl/ws/files/224968970/Rodighiero_2020_Drawing_Network_Visualizations_on_a_Continuous_Sp.pdf
 
-The rebuild, forthcoming:
+The rebuild:
 
-> Rodighiero, D. (2026). Progettare senza mani: Ricostruire un'applicazione web con l'IA / Design without hands: Rebuilding a web application with AI. _Progetto Grafico_, 43. https://doi.org/10.82068/pgjournal.2026.23.42.13
+> Rodighiero, Dario. 2026. “Design Without Hands: Rebuilding a Web Application with AI / Progettare senza mani: ricostruire un’applicazione web con l’IA.” _Progetto Grafico_ 23 (43): 312–25. https://doi.org/10.82068/pgjournal.2026.23.43.13.
+
+Open access on the journal's site: https://pgjournal.aiap.it/index.php/pgj/article/view/2026.23.43.13
 
 The software itself:
 
-> Rodighiero, D. (2026a). _Spherical projection_ [Web application]. https://rodighiero.github.io/spherical-projection/
+> Rodighiero, Dario. 2026a. _Spherical Projection_. Web application. https://rodighiero.github.io/spherical-projection/.
 >
-> Rodighiero, D. (2026b). _Spherical projection_ [Computer software]. GitHub. https://github.com/rodighiero/spherical-projection
+> Rodighiero, Dario. 2026b. _Spherical Projection_. Computer software. GitHub. https://github.com/rodighiero/spherical-projection.
