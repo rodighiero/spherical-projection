@@ -17,6 +17,12 @@ const AUTHORS_PAGE  = 200
 const WORKS_BATCH   = 25   // author IDs per works request
 const CONCURRENCY   = 10   // parallel works requests
 
+// OpenAlex now requires an API key for cursor= paging past the first page
+// (401 "API key required for cursor paging"). Plain page= paging still works
+// keyless, but only up to the first 10 000 records of any one query.
+const PAGE_SIZE     = 200
+const MAX_PAGE      = 10000 / PAGE_SIZE
+
 const MAX_ATTEMPTS    = 5
 const BACKOFF_BASE_MS = 600
 const BACKOFF_CAP_MS  = 10000
@@ -131,7 +137,6 @@ export async function searchTopics(query) {
 
 async function fetchAuthors(topicId, onProgress) {
     const authors = []
-    let cursor = '*'
     const select = [
         'id', 'display_name', 'works_count', 'cited_by_count',
         'topics', 'last_known_institutions',
@@ -139,16 +144,15 @@ async function fetchAuthors(topicId, onProgress) {
 
     const baseUrl = `${BASE}/authors?filter=topics.id:${topicId}&sort=cited_by_count:desc&per_page=${AUTHORS_PAGE}&select=${select}`
 
-    while (authors.length < MAX_AUTHORS) {
-        const data = await get(`${baseUrl}&cursor=${cursor}`)
+    for (let page = 1; authors.length < MAX_AUTHORS; page++) {
+        const data = await get(`${baseUrl}&page=${page}`)
         if (!data.results?.length) break
         authors.push(...data.results)
 
         const pct = 5 + Math.min(24, Math.round(authors.length / MAX_AUTHORS * 24))
         onProgress({ step: 1, label: `Fetching top 1000 most-cited authors (${Math.round(authors.length / MAX_AUTHORS * 100)}%)`, pct })
 
-        cursor = data.meta?.next_cursor
-        if (!cursor) break
+        if (data.results.length < AUTHORS_PAGE) break
     }
 
     return authors.slice(0, MAX_AUTHORS)
@@ -173,11 +177,10 @@ async function fetchCoauthorships(topicId, authors, onProgress) {
 
     async function processBatch(batch) {
         const ids  = batch.map(a => shortId(a.id)).join('|')
-        const base = `${BASE}/works?filter=topics.id:${topicId},author.id:${ids}&select=id,authorships&per_page=200`
-        let cursor = '*'
+        const base = `${BASE}/works?filter=topics.id:${topicId},author.id:${ids}&select=id,authorships&per_page=${PAGE_SIZE}`
 
-        while (cursor) {
-            const data = await get(`${base}&cursor=${cursor}`)
+        for (let page = 1; page <= MAX_PAGE; page++) {
+            const data = await get(`${base}&page=${page}`)
 
             for (const work of data.results || []) {
                 if (seenWorkIds.has(work.id)) continue
@@ -198,7 +201,7 @@ async function fetchCoauthorships(topicId, authors, onProgress) {
                 }
             }
 
-            cursor = data.meta?.next_cursor || null
+            if ((data.results?.length ?? 0) < PAGE_SIZE) break
         }
 
         doneBatches++
