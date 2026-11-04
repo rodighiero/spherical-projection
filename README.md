@@ -18,7 +18,7 @@ The argument is laid out in full in [Drawing Network Visualizations on a Continu
 
 Six years later, in the summer of 2026, the 2020 visualization was rebuilt from scratch in five working sessions with an AI — Claude Code, a chat in the terminal — without its author writing a single line of code. The machine wrote the code; the designer chose among its proposals, refused what went against the work's principles, and answered for the result. The nearly ninety projections are one such refusal: offered a tidier interface with only fifteen, the designer kept them all, because a work about removing margins should not quietly drop its own.
 
-The rebuild, and what it says about authorship when design and making come apart, is the subject of [Design Without Hands: Rebuilding a Web Application with AI](https://doi.org/10.82068/pgjournal.2026.23.43.13) (_Progettare senza mani: ricostruire un'applicazione web con l'IA_), Dario Rodighiero, _Progetto Grafico_ 43, 2026 — a bilingual essay in Italian and English, illustrated with eight views of the same co-authorship network on machine learning, each captioned with the link that reopens it here. It is [open access](https://pgjournal.aiap.it/index.php/pgj/article/view/2026.23.43.13) on the journal's site under a CC BY-NC-SA 4.0 licence.
+The rebuild, and what it says about authorship when design and making come apart, is the subject of [Design Without Hands: Rebuilding a Web Application with AI](https://doi.org/10.82068/pgjournal.2026.23.43.13) (_Progettare senza mani: ricostruire un'applicazione web con l'IA_), Dario Rodighiero, _Progetto Grafico_ 43, 2026 — a bilingual essay in Italian and English, illustrated with eight views of the same co-authorship network on machine learning, each captioned with the link that reopens it here. It is open access under a CC BY-NC-SA 4.0 licence.
 
 ## How it works
 
@@ -70,8 +70,6 @@ Open-access PDF, courtesy of the University of Groningen: https://pure.rug.nl/ws
 The rebuild:
 
 > Rodighiero, Dario. 2026. “Design Without Hands: Rebuilding a Web Application with AI / Progettare senza mani: ricostruire un’applicazione web con l’IA.” _Progetto Grafico_ 23 (43): 312–25. https://doi.org/10.82068/pgjournal.2026.23.43.13.
-
-Open access on the journal's site: https://pgjournal.aiap.it/index.php/pgj/article/view/2026.23.43.13
 
 The software itself:
 
