@@ -4,6 +4,8 @@ A network drawn on a sphere, then unfolded onto the plane through any of nearly 
 
 **[Open the live visualization →](https://rodighiero.github.io/spherical-projection/)**
 
+![Co-authorship network of the top 1 000 authors in Digital Humanities and Scholarship, drawn on a sphere and unfolded with the Peirce Quincuncial projection](docs/screenshot.avif)
+
 ## The idea
 
 Network visualizations are almost always flat. Flatness is convenient — it prints, it scrolls, it sits inside a rectangle — but it pays a price. Some nodes always end up at the edges. When the nodes are people, the edge becomes a kind of demotion: the layout itself produces a hierarchy nobody asked for.
