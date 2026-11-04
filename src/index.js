@@ -633,7 +633,10 @@ function initDragToRotate() {
                 canvas.style.cursor = 'grabbing'
                 wasRunning = isRunning()
                 if (wasRunning) pause()
-                const geo = s.projection.invert([event.x, event.y])
+                // The projection works in viewport world coordinates, not
+                // screen ones — they differ once the user has zoomed.
+                const w0  = s.pixi.toWorld(event.x, event.y)
+                const geo = s.projection.invert([w0.x, w0.y])
                 v0 = geo ? versor.cartesian(geo) : null
                 initialPositions = s.nodes.map(n => n.spherical ? n.spherical.slice() : null)
                 moved = 0
@@ -641,7 +644,8 @@ function initDragToRotate() {
             .on('drag', event => {
                 moved += Math.hypot(event.dx, event.dy)
                 if (!v0) return
-                const geo1 = s.projection.invert([event.x, event.y])
+                const w1   = s.pixi.toWorld(event.x, event.y)
+                const geo1 = s.projection.invert([w1.x, w1.y])
                 if (!geo1) return
                 // Quaternion form drives both the node rotation (via its
                 // Euler equivalent, for d3.geoRotation) and the live
@@ -654,7 +658,8 @@ function initDragToRotate() {
             .on('end', event => {
                 canvas.style.cursor = 'grab'
                 applyPendingRotation()
-                if (pendingDeltaQ) {
+                const rotated = !!pendingDeltaQ
+                if (rotated) {
                     totalRotationQ = versor.multiply(pendingDeltaQ, totalRotationQ)
                     updateConfigRotation()
                     writePermalink()
@@ -663,7 +668,11 @@ function initDragToRotate() {
                 pendingRotate = null
                 pendingDeltaQ = null
                 pending = false
-                if (wasRunning) { syncPositions(s.nodes); resumeQuiet() }
+                // Sync any rotation, even with the simulation stopped —
+                // otherwise the worker still holds the pre-drag layout and
+                // the next Resume / Add time / Restart snaps back to it.
+                if (rotated || wasRunning) syncPositions(s.nodes)
+                if (wasRunning) resumeQuiet()
                 if (moved < CLICK_THRESHOLD) {
                     const w = s.pixi.toWorld(event.x, event.y)
                     selectNode(findNodeAt(w.x, w.y))

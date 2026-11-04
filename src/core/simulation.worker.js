@@ -26,9 +26,11 @@ import { sphereRadius } from './sphere'
 let nodes = null
 let sim = null
 let running = false
+let epoch = 0   // last epoch the main thread sent — see simulation.js
 
 self.onmessage = (e) => {
     const msg = e.data
+    if (msg.epoch !== undefined) epoch = msg.epoch
 
     switch (msg.type) {
 
@@ -209,7 +211,7 @@ function emitTick() {
     }
     // Transfer the buffer's underlying ArrayBuffer — zero-copy handoff.
     self.postMessage(
-        { type: 'tick', positions: buf, alpha: sim.alpha() },
+        { type: 'tick', positions: buf, alpha: sim.alpha(), epoch },
         [buf.buffer]
     )
 }

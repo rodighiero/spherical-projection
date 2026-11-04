@@ -34,6 +34,19 @@ const asin = (x) => x > 1 ? halfPi : x < -1 ? -halfPi : Math.asin(x)
 let worker = null
 let lastAlpha = 1
 
+// Ticks the worker posted before it handled a pause or setPositions are
+// still in flight when those calls return, and would otherwise land after
+// them: resetting lastAlpha so a pause doesn't register (isRunning() true
+// while the worker is idle), or blending the pre-drag layout back in over
+// the rotated one. Every message carries the current epoch, the worker
+// stamps its ticks with the last epoch it saw, and pause()/syncPositions()
+// bump it — so anything sent before them is recognisably stale and dropped.
+let epoch = 0
+
+function post(msg, transfer) {
+    worker && worker.postMessage({ ...msg, epoch }, transfer)
+}
+
 let prevBuf = null, prevAt = 0
 let nextBuf = null, nextAt = 0
 let looping = false
@@ -99,7 +112,7 @@ function spawnWorker() {
 
     worker.onmessage = (e) => {
         const msg = e.data
-        if (msg.type !== 'tick') return
+        if (msg.type !== 'tick' || msg.epoch !== epoch) return
 
         lastAlpha = msg.alpha
 
@@ -119,7 +132,7 @@ function spawnWorker() {
 function initWorker(rotation) {
     // Strip references that won't survive structured cloning, then ship
     // a clean copy of nodes and links into the worker.
-    worker.postMessage({
+    post({
         type: 'init',
         rotation,
         nodes: s.nodes.map(n => ({ id: n.id })),
@@ -149,15 +162,21 @@ export function resetSimulation(rotation) {
 // Controls — fire-and-forget messages. We track alpha locally so
 // isRunning() stays synchronous for the Pause/Resume button.
 
-export function addTime() { worker && worker.postMessage({ type: 'addTime' }); lastAlpha = 0.4 }
-export function restart() { worker && worker.postMessage({ type: 'restart' }); lastAlpha = 1 }
-export function pause()   { worker && worker.postMessage({ type: 'pause' });   lastAlpha = 0 }
-export function resume()  { worker && worker.postMessage({ type: 'resume' });  lastAlpha = Math.max(lastAlpha, 0.3) }
-export function resumeQuiet() { worker && worker.postMessage({ type: 'resumeQuiet' }) }
+export function addTime() { post({ type: 'addTime' }); lastAlpha = 0.4 }
+export function restart() { post({ type: 'restart' }); lastAlpha = 1 }
+export function pause()   { epoch++; post({ type: 'pause' }); lastAlpha = 0 }
+export function resume()  { post({ type: 'resume' });  lastAlpha = Math.max(lastAlpha, 0.3) }
+export function resumeQuiet() { post({ type: 'resumeQuiet' }) }
 export function isRunning() { return lastAlpha > 0.001 }
 
+// Hands the main thread's (rotated) node.spherical back to the worker. Also
+// drops both interpolation buffers: they hold pre-rotation positions, and
+// blending from them would swing every node back through the old layout.
+// The next tick then starts flat from the rotated state.
 export function syncPositions(nodes) {
     if (!worker) return
+    epoch++
+    prevBuf = null; nextBuf = null
     const N = nodes.length
     const R = sphereRadius(N)
     const buf = new Float32Array(N * 3)
@@ -170,5 +189,5 @@ export function syncPositions(nodes) {
         buf[i * 3 + 1] = R * Math.cos(lat) * Math.sin(lon)
         buf[i * 3 + 2] = R * Math.sin(lat)
     }
-    worker.postMessage({ type: 'setPositions', positions: buf }, [buf.buffer])
+    post({ type: 'setPositions', positions: buf }, [buf.buffer])
 }
