@@ -58,14 +58,18 @@ function quotaError(waitMs) {
     return new Error(`OpenAlex daily request quota is used up. It resets in ${when}.`)
 }
 
-async function get(url) {
+// `signal` cancels the request and any retry still waiting; an abort is
+// never retried.
+async function get(url, signal) {
     let lastError, lastStatus
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        signal?.throwIfAborted()
         let res
         try {
-            res = await fetch(url)
+            res = await fetch(url, { signal })
         } catch (err) {
+            if (signal?.aborted) throw err
             // Network-level failure — offline, DNS, dropped connection.
             lastError = err
             if (attempt < MAX_ATTEMPTS) { await sleep(backoffMs(attempt)); continue }
@@ -120,9 +124,9 @@ class TooManyRecords extends Error {
 // yielding anything, unless `truncate` is set: then it yields the first
 // MAX_RECORDS (fine for a caller that only wants the top N anyway) and
 // warns if paging actually runs into the cap.
-async function* pages(url, { truncate = false } = {}) {
+async function* pages(url, { truncate = false, signal } = {}) {
     for (let page = 1; ; page++) {
-        const data    = await get(`${url}&per_page=${PAGE_SIZE}&page=${page}`)
+        const data    = await get(`${url}&per_page=${PAGE_SIZE}&page=${page}`, signal)
         const results = data.results ?? []
         const count   = data.meta?.count ?? 0
         if (page === 1 && count > MAX_RECORDS && !truncate) throw new TooManyRecords(count)
@@ -163,7 +167,7 @@ export async function searchTopics(query) {
 
 // ── Step 2 — fetch top authors ────────────────────────────────────────────────
 
-async function fetchAuthors(topicId, onProgress) {
+async function fetchAuthors(topicId, onProgress, signal) {
     const authors = []
     const select = [
         'id', 'display_name', 'works_count', 'cited_by_count',
@@ -174,7 +178,7 @@ async function fetchAuthors(topicId, onProgress) {
 
     // Only the top MAX_AUTHORS are wanted, so a topic with more authors than
     // paging can reach is fine — truncate rather than throw.
-    for await (const results of pages(baseUrl, { truncate: true })) {
+    for await (const results of pages(baseUrl, { truncate: true, signal })) {
         authors.push(...results)
 
         const pct = 5 + Math.min(24, Math.round(authors.length / MAX_AUTHORS * 24))
@@ -199,9 +203,11 @@ async function fetchAuthors(topicId, onProgress) {
 // a single author over the cap on their own is truncated.
 //
 // The first failure stops every worker: none picks up another batch or page,
-// and no further progress is reported over the error the caller shows.
+// requests already in flight are aborted, and no further progress is
+// reported over the error the caller shows. The caller's `signal` (a newer
+// search superseding this one) stops them the same way.
 
-async function fetchCoauthorships(topicId, authors, onProgress) {
+async function fetchCoauthorships(topicId, authors, onProgress, signal) {
     const authorSet  = new Set(authors.map(a => a.id))
     const edgeMap    = new Map()
     const seenWorkIds = new Set()
@@ -212,15 +218,18 @@ async function fetchCoauthorships(topicId, authors, onProgress) {
     }
 
     let doneBatches = 0
-    let failed = false
+    const stop = new AbortController()
+    if (signal) {
+        if (signal.aborted) stop.abort(signal.reason)
+        else signal.addEventListener('abort', () => stop.abort(signal.reason), { once: true })
+    }
 
     async function processBatch(batch) {
         const ids  = batch.map(a => shortId(a.id)).join('|')
         const base = `${BASE}/works?filter=topics.id:${topicId},author.id:${ids}&select=id,authorships`
 
         try {
-            for await (const results of pages(base, { truncate: batch.length === 1 })) {
-                if (failed) return
+            for await (const results of pages(base, { truncate: batch.length === 1, signal: stop.signal })) {
                 processWorks(results)
             }
         } catch (err) {
@@ -263,9 +272,9 @@ async function fetchCoauthorships(topicId, authors, onProgress) {
     let next = 0
     async function worker() {
         try {
-            while (!failed && next < batches.length) await processBatch(batches[next++])
+            while (!stop.signal.aborted && next < batches.length) await processBatch(batches[next++])
         } catch (err) {
-            failed = true
+            stop.abort(err)
             throw err
         }
     }
@@ -304,7 +313,13 @@ function buildGraph(authors, edgeMap) {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 // topic is { id, display_name } — already resolved by the caller via searchTopics
-export async function fetchNetwork(topic, onProgress) {
+// signal: optional AbortSignal. Aborting it cancels every request still in
+// flight and silences onProgress, so a superseded load can't paint over the
+// one that replaced it.
+export async function fetchNetwork(topic, onProgress, signal) {
+    const report = onProgress
+    onProgress = p => { if (!signal?.aborted) report(p) }
+
     const cached = getCached(topic.id)
     if (cached) {
         onProgress({ step: 3, label: 'Loaded from cache', pct: 100 })
@@ -313,10 +328,10 @@ export async function fetchNetwork(topic, onProgress) {
 
     onProgress({ step: 1, label: `Topic: ${topic.display_name}`, pct: 3 })
 
-    const authors = await fetchAuthors(topic.id, onProgress)
+    const authors = await fetchAuthors(topic.id, onProgress, signal)
     if (authors.length < 10) throw new Error(`Too few authors found for "${topic.display_name}".`)
 
-    const edgeMap = await fetchCoauthorships(topic.id, authors, onProgress)
+    const edgeMap = await fetchCoauthorships(topic.id, authors, onProgress, signal)
 
     onProgress({ step: 3, label: 'Building graph…', pct: 87 })
     const { nodes, links } = buildGraph(authors, edgeMap)

@@ -450,17 +450,25 @@ function loadNetwork(nodes, links, rotation = [0, 0]) {
 
 // ── Search submission ─────────────────────────────────────────────────────────
 
+// The load in progress, if any. Starting another (or going back to search)
+// aborts it, so its requests stop and its result never lands over the new one.
+let loadCtl = null
+
 // topic is { id, display_name } as returned by searchTopics
 async function runQuery(topic, rotation) {
+    loadCtl?.abort()
+    const ctl = loadCtl = new AbortController()
     clearTopicList()
     showLoadingOverlay(topic)
     try {
-        const { nodes, links } = await fetchNetwork(topic, setLoadingProgress)
+        const { nodes, links } = await fetchNetwork(topic, setLoadingProgress, ctl.signal)
+        if (ctl.signal.aborted) return
         loadNetwork(nodes, links, rotation)
         s.topic = topic
         showQueryChip(topic)
         writePermalink()
     } catch (err) {
+        if (ctl.signal.aborted) return
         console.error(err)
         showSearchOverlay(err.message || 'Something went wrong. Try again.')
     }
@@ -591,6 +599,7 @@ function initSearch() {
     input.addEventListener('blur', () => clearTopicList())
 
     titleBtn.addEventListener('click', () => {
+        loadCtl?.abort()
         pause()
         s.nodes = []
         s.links = []
