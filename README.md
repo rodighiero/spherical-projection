@@ -14,6 +14,8 @@ A sphere has no edges. Every point is interior, and the same node can be the cen
 
 The argument is laid out in full in [Drawing Network Visualizations on a Continuous, Spherical Surface](https://doi.org/10.1109/IV51561.2020.00097), Dario Rodighiero, _IEEE IV 2020_ — an [open-access PDF](https://pure.rug.nl/ws/files/224968970/Rodighiero_2020_Drawing_Network_Visualizations_on_a_Continuous_Sp.pdf) is hosted by the University of Groningen.
 
+![The pages of “Drawing Network Visualizations on a Continuous, Spherical Surface”, IEEE IV 2020, turning spread by spread](docs/iv2020.gif)
+
 ## The rebuild
 
 Six years later, in the summer of 2026, the 2020 visualization was rebuilt from scratch in five working sessions with an AI — Claude Code, a chat in the terminal — without its author writing a single line of code. The machine wrote the code; the designer chose among its proposals, refused what went against the work's principles, and answered for the result. The nearly ninety projections are one such refusal: offered a tidier interface with only fifteen, the designer kept them all, because a work about removing margins should not quietly drop its own.
