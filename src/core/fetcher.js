@@ -13,15 +13,11 @@ import { getCached, setCached, getCachedSearch, setCachedSearch } from './cache'
 
 const BASE          = 'https://api.openalex.org'
 const MAX_AUTHORS   = 1000
-const AUTHORS_PAGE  = 200
 const WORKS_BATCH   = 25   // author IDs per works request
 const CONCURRENCY   = 10   // parallel works requests
 
-// OpenAlex now requires an API key for cursor= paging past the first page
-// (401 "API key required for cursor paging"). Plain page= paging still works
-// keyless, but only up to the first 10 000 records of any one query.
-const PAGE_SIZE     = 200
-const MAX_PAGE      = 10000 / PAGE_SIZE
+const PAGE_SIZE     = 200     // per_page for every paged query
+const MAX_RECORDS   = 10000   // keyless page= paging stops here
 
 const MAX_ATTEMPTS    = 5
 const BACKOFF_BASE_MS = 600
@@ -107,6 +103,22 @@ async function get(url) {
     throw lastError
 }
 
+// Yields each page's results for a paged OpenAlex query. OpenAlex requires
+// an API key for cursor= paging past the first page (401 "API key required
+// for cursor paging"), so this uses plain page= paging, which works keyless
+// but only reaches the first MAX_RECORDS records of any one query. Stops on
+// meta.count rather than a short page, so an exact multiple of PAGE_SIZE
+// doesn't cost an extra empty request.
+async function* pages(url) {
+    for (let page = 1; ; page++) {
+        const data    = await get(`${url}&per_page=${PAGE_SIZE}&page=${page}`)
+        const results = data.results ?? []
+        if (results.length) yield results
+        const total = Math.min(data.meta?.count ?? 0, MAX_RECORDS)
+        if (!results.length || page * PAGE_SIZE >= total) return
+    }
+}
+
 function shortId(url) {
     // "https://openalex.org/T10102" → "T10102"
     return url ? url.split('/').pop() : null
@@ -142,17 +154,15 @@ async function fetchAuthors(topicId, onProgress) {
         'topics', 'last_known_institutions',
     ].join(',')
 
-    const baseUrl = `${BASE}/authors?filter=topics.id:${topicId}&sort=cited_by_count:desc&per_page=${AUTHORS_PAGE}&select=${select}`
+    const baseUrl = `${BASE}/authors?filter=topics.id:${topicId}&sort=cited_by_count:desc&select=${select}`
 
-    for (let page = 1; authors.length < MAX_AUTHORS; page++) {
-        const data = await get(`${baseUrl}&page=${page}`)
-        if (!data.results?.length) break
-        authors.push(...data.results)
+    for await (const results of pages(baseUrl)) {
+        authors.push(...results)
 
         const pct = 5 + Math.min(24, Math.round(authors.length / MAX_AUTHORS * 24))
         onProgress({ step: 1, label: `Fetching top 1000 most-cited authors (${Math.round(authors.length / MAX_AUTHORS * 100)}%)`, pct })
 
-        if (data.results.length < AUTHORS_PAGE) break
+        if (authors.length >= MAX_AUTHORS) break
     }
 
     return authors.slice(0, MAX_AUTHORS)
@@ -177,12 +187,10 @@ async function fetchCoauthorships(topicId, authors, onProgress) {
 
     async function processBatch(batch) {
         const ids  = batch.map(a => shortId(a.id)).join('|')
-        const base = `${BASE}/works?filter=topics.id:${topicId},author.id:${ids}&select=id,authorships&per_page=${PAGE_SIZE}`
+        const base = `${BASE}/works?filter=topics.id:${topicId},author.id:${ids}&select=id,authorships`
 
-        for (let page = 1; page <= MAX_PAGE; page++) {
-            const data = await get(`${base}&page=${page}`)
-
-            for (const work of data.results || []) {
+        for await (const results of pages(base)) {
+            for (const work of results) {
                 if (seenWorkIds.has(work.id)) continue
                 seenWorkIds.add(work.id)
 
@@ -200,8 +208,6 @@ async function fetchCoauthorships(topicId, authors, onProgress) {
                     }
                 }
             }
-
-            if ((data.results?.length ?? 0) < PAGE_SIZE) break
         }
 
         doneBatches++
