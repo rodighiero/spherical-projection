@@ -113,9 +113,15 @@ async function* pages(url) {
     for (let page = 1; ; page++) {
         const data    = await get(`${url}&per_page=${PAGE_SIZE}&page=${page}`)
         const results = data.results ?? []
+        const count   = data.meta?.count ?? 0
         if (results.length) yield results
-        const total = Math.min(data.meta?.count ?? 0, MAX_RECORDS)
-        if (!results.length || page * PAGE_SIZE >= total) return
+        if (!results.length || page * PAGE_SIZE >= count) return
+        if (page * PAGE_SIZE >= MAX_RECORDS) {
+            // Only reached when the caller wanted everything — a caller that
+            // breaks early (fetchAuthors) never gets here.
+            console.warn(`OpenAlex: ${count} records, only the first ${MAX_RECORDS} are reachable without an API key: ${url}`)
+            return
+        }
     }
 }
 
@@ -169,7 +175,10 @@ async function fetchAuthors(topicId, onProgress) {
 }
 
 // ── Step 3 — co-authorship via batched author works ───────────────────────────
-// Fetches works for batches of authors in parallel. A shared seenWorkIds set
+// Fetches works for batches of authors in parallel: CONCURRENCY workers each
+// pull the next batch as soon as their current one finishes, so a slow batch
+// (the most-cited authors, many pages) never leaves the other slots idle the
+// way fixed rounds of CONCURRENCY batches did. A shared seenWorkIds set
 // ensures each work is processed exactly once even when it appears in multiple
 // batches (co-authored by people from different batches).
 
@@ -219,9 +228,11 @@ async function fetchCoauthorships(topicId, authors, onProgress) {
         })
     }
 
-    for (let i = 0; i < batches.length; i += CONCURRENCY) {
-        await Promise.all(batches.slice(i, i + CONCURRENCY).map(processBatch))
+    let next = 0
+    async function worker() {
+        while (next < batches.length) await processBatch(batches[next++])
     }
+    await Promise.all(Array.from({ length: CONCURRENCY }, worker))
 
     return edgeMap
 }
