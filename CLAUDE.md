@@ -33,12 +33,14 @@ The force-directed layout runs entirely in a Web Worker (`src/core/simulation.wo
 1. Worker receives `init` with stripped node/link copies (no circular refs) and runs `d3-force-3d` in 3D space.
 2. Custom `surfaceForce` projects nodes onto a sphere of radius `R = 15√N` and constrains velocity to the tangent plane. It works purely in Cartesian x/y/z — `node.spherical = [lon, lat]` (degrees) is derived on the main thread instead, see step 5.
 3. Custom `centroidForce` counteracts hemispheric drift from link forces.
-4. Nodes start on a Fibonacci sphere for uniform seeding (`αDecay = 0.007` → ~10s cool-down at the worker's own tick rate, see below).
+4. Nodes start on a Fibonacci sphere for uniform seeding (`αDecay = 0.0035` → ~2 000 ticks to cool below `alphaMin`, about 30s at the worker's measured ~15.6ms/tick, see below).
 5. On every tick, positions are packed into a `Float32Array` (3 floats/node: x, y, z) and **transferred** (zero-copy) back to the main thread via `postMessage`. lon/lat is deliberately *not* shipped: the main thread interpolates between two ticks in Cartesian space and derives `node.spherical` from the blended xyz, so anything the worker computed would be discarded.
 6. **d3-force's own animation timer is never used.** `sim.stop()` is called immediately after construction; every step from then on is driven by `runLoop()`, a manual `sim.tick()` + `emitTick()` self-rescheduled via zero-delay `setTimeout`. This exists because d3-timer's fallback for environments without `requestAnimationFrame` (every Worker) is a hardcoded `setTimeout(f, 17)` applied *after* each step completes regardless of how fast that step actually ran — measured, that capped this network at ~30 ticks/s despite each step costing only ~8ms of real compute. Stepping manually removed the floor (measured mean interval ~30ms → ~15.6ms). `runLoop()` also owns the alphaMin stop-check that d3-force's own ticker would otherwise handle.
 7. Ticks land at whatever rate the worker's loop achieves, not vsync-locked and not always faster than the display refresh. Rather than draw on message arrival, `src/core/simulation.js` keeps the last two received ticks and interpolates node positions between them on every `requestAnimationFrame` callback, then calls `drawLinks()` / `drawNodes()` — so the sphere animates at the display's full rate regardless of the worker's tick cadence. `drawGraticule()` is not part of this loop — see Rendering below.
 
-After a drag-to-rotate, `syncPositions()` converts `node.spherical` back to Cartesian and sends a `setPositions` message so the worker resumes from the rotated state.
+After a drag-to-rotate, `syncPositions()` converts `node.spherical` back to Cartesian and sends a `setPositions` message so the worker resumes from the rotated state. This happens whenever the drag actually rotated, even with the simulation paused or cooled — otherwise the next Resume / Add time / Restart would snap back to the worker's pre-drag layout. `syncPositions()` also drops both interpolation buffers so the next tick starts flat from the rotated positions instead of blending through the old ones.
+
+**Tick epochs.** Ticks the worker posted before it handled a `pause` or `setPositions` are still in flight when those calls return. Every main→worker message carries an `epoch`, the worker stamps each tick with the last epoch it saw, and `pause()` / `syncPositions()` bump it — so the main thread drops any tick older than its current epoch. Without this, a stale tick resets `lastAlpha` after a pause (`isRunning()` reads true while the worker is idle) or paints the pre-drag layout over a rotation. The Pause/Resume button label is driven by `onRunningChange()`, which fires whenever `isRunning()` flips — controls, a new network, or the simulation cooling down on its own.
 
 ### Rendering (PixiJS v8 + d3-geo)
 
@@ -59,7 +61,13 @@ Every built projection then goes through `clipToOutline()` (`src/core/outlineCli
 
 `src/core/fetcher.js` queries the [OpenAlex API](https://api.openalex.org) live:
 - `searchTopics(query)` — autocomplete, returns up to 8 matching topics.
-- `fetchNetwork(topic, onProgress)` — fetches up to 1 000 top-cited authors, then builds a co-authorship graph by batching works requests (25 authors/batch, 10 concurrent). Returns `{ nodes, links }` with **every** author kept, including those with no co-authors in the set (typically ~8% of nodes) — they render as free-floating dots.
+- `fetchNetwork(topic, onProgress, signal)` — fetches up to 1 000 top-cited authors, then builds a co-authorship graph by batching works requests (25 authors/batch) through a pool of 10 workers, each pulling the next batch as soon as its current one finishes. Returns `{ nodes, links }` with **every** author kept, including those with no co-authors in the set (typically ~8% of nodes) — they render as free-floating dots.
+
+**Paging.** OpenAlex returns 401 ("API key required for cursor paging") for keyless `cursor=` paging past the first page, and no key is sent, so every paged query goes through `pages()`, which uses plain `page=` paging. That works keyless but only reaches the first 10 000 records (`MAX_RECORDS`) of any one query. `pages()` throws `TooManyRecords` on a query over that cap unless called with `truncate` (the authors query, which only wants the top 1 000). A works batch that throws is split in half and both halves re-queued, so no co-authorships are lost; only a single author with more than 10 000 works in the topic is truncated, with a console warning.
+
+**Cancellation.** The first failed batch aborts every other worker's in-flight request and stops the pool. `runQuery()` in `index.js` passes an `AbortSignal` and aborts the previous load when a new one starts (or the title returns to search), so a superseded load stops issuing requests, stops reporting progress, and never lands over the new network.
+
+Without a key, requests run against OpenAlex's shared daily quota; one uncached network costs roughly 50–100 requests. When the quota is exhausted, `get()` surfaces the reset time from `Retry-After` rather than retrying.
 
 Results are cached in `localStorage` for one week (`src/core/cache.js`, key prefix `sp:`).
 
